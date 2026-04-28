@@ -1,6 +1,5 @@
 package com.example.mytodo.ui
 
-import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -443,7 +442,7 @@ private fun TodoRow(
 }
 
 @Preview(showBackground = true)
-//@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+// @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun HomeworkScreenPreview() {
     val today = AppDate.today()
