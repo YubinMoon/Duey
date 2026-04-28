@@ -71,11 +71,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mytodo.model.AppDate
 import com.example.mytodo.model.TodoItem
+import com.example.mytodo.ui.theme.MyTodoTheme
 import com.example.mytodo.ui.theme.SundayRed
 import com.example.mytodo.viewmodel.TodoViewModel
 import kotlinx.coroutines.launch
@@ -780,6 +782,68 @@ private fun CategoryTodoListDialog(
                 }
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("닫기") }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MoreScreenPreview() {
+    MyTodoTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+            ) {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "설정",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surface,
+                            RoundedCornerShape(18.dp),
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(18.dp),
+                        )
+                        .clip(RoundedCornerShape(18.dp)),
+                ) {
+                    MenuItem(
+                        title = "전체 일정 보기",
+                        icon = Icons.AutoMirrored.Filled.List,
+                        onClick = {},
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        thickness = 0.5.dp,
+                    )
+                    MenuItem(
+                        title = "카테고리 관리",
+                        icon = Icons.Default.Category,
+                        onClick = {},
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        thickness = 0.5.dp,
+                    )
+                    MenuItem(
+                        title = "백업 및 복구",
+                        icon = Icons.Default.Backup,
+                        onClick = {},
+                    )
+                }
             }
         }
     }

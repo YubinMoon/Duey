@@ -66,12 +66,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mytodo.model.AppDate
 import com.example.mytodo.model.TodoItem
+import com.example.mytodo.ui.theme.MyTodoTheme
 import com.example.mytodo.ui.theme.SaturdayBlue
 import com.example.mytodo.ui.theme.SundayRed
 import com.example.mytodo.viewmodel.TodoViewModel
@@ -824,4 +826,150 @@ private fun changeMonth(y: Int, m: Int, delta: Int): Pair<Int, Int> {
         delta,
     )
     return cal.get(Calendar.YEAR) to cal.get(Calendar.MONTH) + 1
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ScheduleScreenPreview() {
+    val today = AppDate.today()
+    val selectedDate = today.addDays(1)
+    val todos =
+        listOf(
+            TodoItem(
+                id = 1,
+                title = "팀 프로젝트 회의",
+                description = "요구사항 정리와 화면 분담",
+                startDate = today,
+                endDate = today.addDays(2),
+                category = "학업",
+            ),
+            TodoItem(
+                id = 2,
+                title = "운동",
+                description = "저녁 러닝 5km",
+                startDate = selectedDate,
+                endDate = selectedDate,
+                category = "운동",
+            ),
+            TodoItem(
+                id = 3,
+                title = "독서",
+                description = "챕터 3까지 읽기",
+                startDate = selectedDate,
+                endDate = selectedDate.addDays(1),
+                category = "개인",
+                isCompleted = true,
+            ),
+        )
+    val previewCounts =
+        buildMap {
+            put(today, 1)
+            put(selectedDate, 3)
+            put(selectedDate.addDays(1), 2)
+        }
+
+    MyTodoTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+            ) {
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Text(
+                        text = "내 일정",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        text = "${today.year}년 ${today.month}월",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(18.dp),
+                        )
+                        .padding(16.dp),
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        listOf("일", "월", "화", "수", "목", "금", "토").forEachIndexed { idx, label ->
+                            Text(
+                                text = label,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = when (idx) {
+                                    0 -> SundayRed
+                                    6 -> SaturdayBlue
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                },
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    repeat(5) { row ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                        ) {
+                            repeat(7) { col ->
+                                val date = today.addDays(row * 7 + col - 2)
+                                DayCell(
+                                    modifier = Modifier.weight(1f),
+                                    dayNum = date.day,
+                                    col = col,
+                                    isToday = date == today,
+                                    isSelected = date == selectedDate,
+                                    isInRange = date >= today && date <= today.addDays(2),
+                                    roundLeft = date == today,
+                                    roundRight = date == today.addDays(2),
+                                    count = previewCounts[date] ?: 0,
+                                    isOverflow = false,
+                                    onClick = {},
+                                )
+                            }
+                        }
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                ) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        contentPadding = PaddingValues(vertical = 16.dp),
+                    ) {
+                        items(todos, key = { it.id }) { todo ->
+                            ScheduleListItem(
+                                todo = todo,
+                                today = today,
+                                isSelected = todo.id == 2L,
+                                onClick = {},
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
