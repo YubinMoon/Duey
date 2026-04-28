@@ -1,6 +1,9 @@
 *.iml
 .gradle
 /local.properties
+/.idea
+/.kotlin
+/.claude
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
@@ -13,3 +16,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+AGENTS.md
+DESIGN.md
+R8_Configuration_Analysis.md
+report.md
