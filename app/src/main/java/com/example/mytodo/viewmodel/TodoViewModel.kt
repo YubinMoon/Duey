@@ -1,6 +1,7 @@
 package com.example.mytodo.viewmodel
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
@@ -11,7 +12,6 @@ import com.example.mytodo.data.sampleTodos
 import com.example.mytodo.model.AppDate
 import com.example.mytodo.model.Category
 import com.example.mytodo.model.TodoItem
-import com.terry.duey.BuildConfig
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -37,6 +37,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
     private val todoDao = database.todoDao()
     private val categoryDao = database.categoryDao()
+    private val isDebugBuild = (application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     val todos: StateFlow<List<TodoItem>> =
         todoDao.getAllTodos()
@@ -198,7 +199,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun seedDebugTodosIfEmpty() {
-        if (!BuildConfig.DEBUG || todoDao.getAllTodos().first().isNotEmpty()) return
+        if (!isDebugBuild || todoDao.getAllTodos().first().isNotEmpty()) return
 
         sampleTodos(AppDate.today()).forEach { todo ->
             todoDao.insertTodo(todo)
