@@ -18,7 +18,7 @@ No custom keep rules were found in `app/proguard-rules.pro`.
 
 ## Reflection Analysis
 
-- `com.example.mytodo.viewmodel.TodoViewModel`: Uses `org.json.JSONObject` for backup/restore. Fields are manually mapped, so no reflection-based keep rules are required for the model classes.
+- `com.terry.duey.viewmodel.TodoViewModel`: Uses `org.json.JSONObject` for backup/restore. Fields are manually mapped, so no reflection-based keep rules are required for the model classes.
 
 ## Recommendations
 
