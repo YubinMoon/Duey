@@ -5,17 +5,30 @@ plugins {
 }
 
 android {
-    namespace = "com.example.mytodo"
+    namespace = "com.terry.duey"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.mytodo"
+        applicationId = "com.terry.duey"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("stage") {
+            dimension = "environment"
+            applicationIdSuffix = ".stage"
+            resValue("string", "app_name", "Duey Stage")
+        }
+        create("prod") {
+            dimension = "environment"
+            resValue("string", "app_name", "Duey")
+        }
     }
 
     buildTypes {
@@ -36,6 +49,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 }
 

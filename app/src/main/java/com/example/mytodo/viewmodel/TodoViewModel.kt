@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
-import com.example.mytodo.BuildConfig
 import com.example.mytodo.data.AppDatabase
 import com.example.mytodo.data.DEFAULT_CATEGORIES
 import com.example.mytodo.data.DEFAULT_CATEGORY
@@ -12,6 +11,7 @@ import com.example.mytodo.data.sampleTodos
 import com.example.mytodo.model.AppDate
 import com.example.mytodo.model.Category
 import com.example.mytodo.model.TodoItem
+import com.terry.duey.BuildConfig
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first

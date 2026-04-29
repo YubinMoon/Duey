@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyTodo">
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.mytodo.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.MyTodo">
@@ -23,7 +23,7 @@
             </intent-filter>
         </activity>
         <receiver
-            android:name=".widget.TodoWidgetReceiver"
+            android:name="com.example.mytodo.widget.TodoWidgetReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
