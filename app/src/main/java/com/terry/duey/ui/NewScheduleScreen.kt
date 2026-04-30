@@ -165,254 +165,261 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
-                .imePadding(),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(scrollState),
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
+                    .imePadding(),
             ) {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "새 일정 만들기",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(16.dp))
-
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(18.dp),
-                        )
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                        .weight(1f)
+                        .verticalScroll(scrollState),
                 ) {
-                    // 제목 입력
-                    Column {
-                        Text(
-                            "제목",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        OutlinedTextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            placeholder = { Text("무엇을 해야 하나요?") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                        )
-                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "새 일정 만들기",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.height(16.dp))
 
-                    // 설명 입력
-                    Column {
-                        Text(
-                            "설명",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        OutlinedTextField(
-                            value = description,
-                            onValueChange = { description = it },
-                            placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            minLines = 1,
-                            maxLines = 5,
-                        )
-                    }
-
-                    // 카테고리 선택
-                    Column {
-                        Text(
-                            "카테고리",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { showCategorySelect = true }
-                                .padding(16.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = category,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.List,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
-
-                    // 기간 선택
-                    Column {
-                        Text(
-                            "기간",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { showRangePicker = true }
-                                .padding(16.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = "$startDate ~ $endDate",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Icon(
-                                    imageVector = Icons.Filled.DateRange,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(40.dp))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Button(
-                    onClick = {
-                        viewModel.addTodo(
-                            TodoItem(
-                                title = title.trim(),
-                                description = description.trim(),
-                                category = category,
-                                startDate = startDate,
-                                endDate = endDate,
-                            ),
-                        )
-                        onSaved()
-                    },
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(100),
-                    enabled = title.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) {
-                    Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
-                }
-                Box(contentAlignment = Alignment.BottomCenter) {
-                    if (isRecordingVoice) {
-                        VoiceRecordingBubble(levels = voiceLevels)
-                    }
-                    val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isVoiceButtonEnabled) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                },
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(18.dp),
                             )
-                            .testTag("btn_voice_add_schedule")
-                            .pointerInput(voiceState) {
-                                detectTapGestures(
-                                    onPress = {
-                                        if (!isVoiceButtonEnabled) return@detectTapGestures
-                                        val hasPermission = ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.RECORD_AUDIO,
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                        if (!hasPermission) {
-                                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                            return@detectTapGestures
-                                        }
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        // 제목 입력
+                        Column {
+                            Text(
+                                "제목",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            OutlinedTextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                placeholder = { Text("무엇을 해야 하나요?") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                            )
+                        }
 
-                                        voiceLevels.clear()
-                                        repeat(VOICE_LEVEL_COUNT) {
-                                            voiceLevels.add(0.08f)
-                                        }
-                                        if (!voiceRecorder.start(context)) {
-                                            isRecordingVoice = false
-                                            viewModel.clearVoiceInputState()
-                                            return@detectTapGestures
-                                        }
-                                        isRecordingVoice = true
-                                        val released = tryAwaitRelease()
-                                        isRecordingVoice = false
-                                        val recording = if (released) {
-                                            voiceRecorder.stop()
-                                        } else {
-                                            voiceRecorder.cancel()
-                                            null
-                                        }
-                                        if (recording != null && recording.durationMillis >= MIN_VOICE_RECORD_MILLIS) {
-                                            viewModel.submitVoiceAudio(recording.file.readBytes(), recording.mimeType)
-                                        } else {
-                                            viewModel.clearVoiceInputState()
-                                        }
-                                        recording?.file?.delete()
+                        // 설명 입력
+                        Column {
+                            Text(
+                                "설명",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            OutlinedTextField(
+                                value = description,
+                                onValueChange = { description = it },
+                                placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                minLines = 1,
+                                maxLines = 5,
+                            )
+                        }
+
+                        // 카테고리 선택
+                        Column {
+                            Text(
+                                "카테고리",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .clickable { showCategorySelect = true }
+                                    .padding(16.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = category,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.List,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        // 기간 선택
+                        Column {
+                            Text(
+                                "기간",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .clickable { showRangePicker = true }
+                                    .padding(16.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = "$startDate ~ $endDate",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Filled.DateRange,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(40.dp))
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.addTodo(
+                                TodoItem(
+                                    title = title.trim(),
+                                    description = description.trim(),
+                                    category = category,
+                                    startDate = startDate,
+                                    endDate = endDate,
+                                ),
+                            )
+                            onSaved()
+                        },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(100),
+                        enabled = title.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Box(contentAlignment = Alignment.Center) {
+                        val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isVoiceButtonEnabled) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
                                     },
                                 )
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = "음성으로 일정 입력",
-                            tint = if (isVoiceButtonEnabled) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
+                                .testTag("btn_voice_add_schedule")
+                                .pointerInput(voiceState) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            if (!isVoiceButtonEnabled) return@detectTapGestures
+                                            val hasPermission = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO,
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (!hasPermission) {
+                                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                                return@detectTapGestures
+                                            }
+
+                                            voiceLevels.clear()
+                                            repeat(VOICE_LEVEL_COUNT) {
+                                                voiceLevels.add(0.08f)
+                                            }
+                                            if (!voiceRecorder.start(context)) {
+                                                isRecordingVoice = false
+                                                viewModel.clearVoiceInputState()
+                                                return@detectTapGestures
+                                            }
+                                            isRecordingVoice = true
+                                            val released = tryAwaitRelease()
+                                            isRecordingVoice = false
+                                            val recording = if (released) {
+                                                voiceRecorder.stop()
+                                            } else {
+                                                voiceRecorder.cancel()
+                                                null
+                                            }
+                                            if (recording != null && recording.durationMillis >= MIN_VOICE_RECORD_MILLIS) {
+                                                viewModel.submitVoiceAudio(recording.file.readBytes(), recording.mimeType)
+                                            } else {
+                                                viewModel.clearVoiceInputState()
+                                            }
+                                            recording?.file?.delete()
+                                        },
+                                    )
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = "음성으로 일정 입력",
+                                tint = if (isVoiceButtonEnabled) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
                     }
                 }
+                Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(16.dp))
+            if (isRecordingVoice) {
+                VoiceRecordingBubble(
+                    levels = voiceLevels,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 96.dp),
+                )
+            }
         }
     }
 
@@ -515,10 +522,12 @@ private class HoldVoiceRecorder {
 }
 
 @Composable
-private fun VoiceRecordingBubble(levels: List<Float>) {
+private fun VoiceRecordingBubble(
+    levels: List<Float>,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = Modifier
-            .padding(bottom = 68.dp)
+        modifier = modifier
             .width(216.dp)
             .height(72.dp),
         shape = RoundedCornerShape(24.dp),
