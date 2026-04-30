@@ -99,7 +99,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     val recordAudioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.data
-            val audioBytes = uri?.let { context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes() } }.orEmpty()
+            val audioBytes = uri?.let { context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes() } } ?: byteArrayOf()
             val mime = uri?.let { context.contentResolver.getType(it) } ?: "audio/mp4"
             viewModel.submitVoiceAudio(audioBytes, mime)
         } else {
