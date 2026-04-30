@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,14 +80,19 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
+import com.terry.duey.ui.theme.ActionBlue
 import com.terry.duey.ui.theme.MyTodoTheme
+import com.terry.duey.ui.theme.NearBlackInk
+import com.terry.duey.ui.theme.Parchment
 import com.terry.duey.ui.theme.SaturdayBlue
 import com.terry.duey.ui.theme.SundayRed
 import com.terry.duey.viewmodel.TodoViewModel
 import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Calendar
+import kotlin.math.PI
 import kotlin.math.log10
+import kotlin.math.sin
 
 @Composable
 fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
@@ -413,11 +419,11 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                 Spacer(Modifier.height(16.dp))
             }
             if (isRecordingVoice) {
-                VoiceRecordingBubble(
+                VoiceRecordingOverlay(
                     levels = voiceLevels,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 96.dp),
+                        .padding(bottom = 12.dp),
                 )
             }
         }
@@ -562,6 +568,65 @@ private fun VoiceRecordingBubble(
                             .height((6 + (30 * level)).dp)
                             .clip(RoundedCornerShape(100))
                             .background(MaterialTheme.colorScheme.onPrimaryContainer),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceRecordingOverlay(
+    levels: List<Float>,
+    modifier: Modifier = Modifier,
+) {
+    val inputLevel = levels.lastOrNull()?.coerceIn(0.05f, 1f) ?: 0.05f
+    val motionPhase = levels.size * 0.42f
+
+    Surface(
+        modifier = modifier
+            .width(236.dp)
+            .height(48.dp),
+        shape = RoundedCornerShape(980.dp),
+        color = Parchment,
+        contentColor = NearBlackInk,
+        border = BorderStroke(1.dp, NearBlackInk.copy(alpha = 0.08f)),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "녹음 중",
+                style = MaterialTheme.typography.labelSmall,
+                color = NearBlackInk.copy(alpha = 0.8f),
+                fontWeight = FontWeight.Bold,
+            )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(VOICE_LEVEL_COUNT) { index ->
+                    val bandPosition = index / (VOICE_LEVEL_COUNT - 1f)
+                    val midBandLift = sin(bandPosition * PI).toFloat().coerceAtLeast(0f)
+                    val bandRipple = (sin((index * 1.71f) + motionPhase) + 1f) * 0.5f
+                    val level = (
+                        0.12f +
+                            inputLevel * (0.32f + midBandLift * 0.48f) +
+                            bandRipple * 0.18f
+                        ).coerceIn(0.12f, 1f)
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .height((5 + (23 * level)).dp)
+                            .clip(RoundedCornerShape(100))
+                            .background(ActionBlue),
                     )
                 }
             }
