@@ -15,7 +15,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -80,10 +80,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
-import com.terry.duey.ui.theme.ActionBlue
 import com.terry.duey.ui.theme.MyTodoTheme
-import com.terry.duey.ui.theme.NearBlackInk
-import com.terry.duey.ui.theme.Parchment
 import com.terry.duey.ui.theme.SaturdayBlue
 import com.terry.duey.ui.theme.SundayRed
 import com.terry.duey.viewmodel.TodoViewModel
@@ -423,7 +420,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                     levels = voiceLevels,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 12.dp),
+                        .offset(y = 52.dp),
                 )
             }
         }
@@ -588,10 +585,9 @@ private fun VoiceRecordingOverlay(
             .width(236.dp)
             .height(48.dp),
         shape = RoundedCornerShape(980.dp),
-        color = Parchment,
-        contentColor = NearBlackInk,
-        border = BorderStroke(1.dp, NearBlackInk.copy(alpha = 0.08f)),
-        tonalElevation = 0.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 8.dp,
         shadowElevation = 0.dp,
     ) {
         Row(
@@ -604,7 +600,7 @@ private fun VoiceRecordingOverlay(
             Text(
                 text = "녹음 중",
                 style = MaterialTheme.typography.labelSmall,
-                color = NearBlackInk.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 fontWeight = FontWeight.Bold,
             )
             Row(
@@ -626,7 +622,7 @@ private fun VoiceRecordingOverlay(
                             .width(4.dp)
                             .height((5 + (23 * level)).dp)
                             .clip(RoundedCornerShape(100))
-                            .background(ActionBlue),
+                            .background(MaterialTheme.colorScheme.primary),
                     )
                 }
             }
