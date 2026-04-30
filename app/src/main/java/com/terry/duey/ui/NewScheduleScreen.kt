@@ -1,5 +1,13 @@
 package com.terry.duey.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.media.MediaRecorder
+import android.os.Build
+import android.os.SystemClock
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -11,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +48,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,11 +56,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,19 +69,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.provider.MediaStore
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
@@ -78,6 +84,8 @@ import com.terry.duey.ui.theme.MyTodoTheme
 import com.terry.duey.ui.theme.SaturdayBlue
 import com.terry.duey.ui.theme.SundayRed
 import com.terry.duey.viewmodel.TodoViewModel
+import kotlinx.coroutines.delay
+import java.io.File
 import java.util.Calendar
 
 @Composable
@@ -96,18 +104,28 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     val scrollState = rememberScrollState()
     val voiceState by viewModel.voiceInputState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val recordAudioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val uri = result.data?.data
-            val audioBytes = uri?.let { context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes() } } ?: byteArrayOf()
-            val mime = uri?.let { context.contentResolver.getType(it) } ?: "audio/mp4"
-            viewModel.submitVoiceAudio(audioBytes, mime)
-        } else {
-            viewModel.clearVoiceInputState()
+    val voiceRecorder = remember { HoldVoiceRecorder() }
+    var isRecordingVoice by remember { mutableStateOf(false) }
+    val voiceLevels = remember { mutableStateListOf<Float>() }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) viewModel.clearVoiceInputState()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceRecorder.cancel()
         }
     }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) recordAudioLauncher.launch(createRecordAudioIntent()) else viewModel.clearVoiceInputState()
+
+    LaunchedEffect(isRecordingVoice) {
+        while (isRecordingVoice) {
+            val level = voiceRecorder.currentLevel()
+            if (voiceLevels.size >= VOICE_LEVEL_COUNT) {
+                voiceLevels.removeAt(0)
+            }
+            voiceLevels.add(level)
+            delay(80)
+        }
     }
 
     LaunchedEffect(voiceState) {
@@ -323,12 +341,55 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                 ) {
                     Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
                 }
-                FilledIconButton(
-                    onClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                    modifier = Modifier.size(56.dp).testTag("btn_voice_add_schedule"),
-                    enabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing,
-                ) {
-                    Icon(Icons.Default.Mic, contentDescription = "음성으로 일정 입력")
+                Box(contentAlignment = Alignment.BottomCenter) {
+                    if (isRecordingVoice) {
+                        VoiceRecordingBubble(levels = voiceLevels)
+                    }
+                    FilledIconButton(
+                        onClick = {},
+                        modifier = Modifier
+                            .size(56.dp)
+                            .testTag("btn_voice_add_schedule")
+                            .pointerInput(voiceState) {
+                                detectTapGestures(
+                                    onPress = {
+                                        if (voiceState is TodoViewModel.VoiceInputUiState.Processing) return@detectTapGestures
+                                        val hasPermission = ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.RECORD_AUDIO,
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                        if (!hasPermission) {
+                                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                            return@detectTapGestures
+                                        }
+
+                                        voiceLevels.clear()
+                                        if (!voiceRecorder.start(context)) {
+                                            viewModel.clearVoiceInputState()
+                                            return@detectTapGestures
+                                        }
+                                        isRecordingVoice = true
+                                        val released = tryAwaitRelease()
+                                        isRecordingVoice = false
+                                        val recording = if (released) {
+                                            voiceRecorder.stop()
+                                        } else {
+                                            voiceRecorder.cancel()
+                                            null
+                                        }
+                                        if (recording != null && recording.durationMillis >= MIN_VOICE_RECORD_MILLIS) {
+                                            viewModel.submitVoiceAudio(recording.file.readBytes(), recording.mimeType)
+                                        } else {
+                                            viewModel.clearVoiceInputState()
+                                        }
+                                        recording?.file?.delete()
+                                    },
+                                )
+                            },
+                        enabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing,
+                    ) {
+                        Icon(Icons.Default.Mic, contentDescription = "음성으로 일정 입력")
+                    }
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -345,7 +406,124 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     }
 }
 
-private fun createRecordAudioIntent(): Intent = Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+private const val VOICE_LEVEL_COUNT = 18
+private const val MIN_VOICE_RECORD_MILLIS = 500L
+
+private data class VoiceRecording(
+    val file: File,
+    val mimeType: String,
+    val durationMillis: Long,
+)
+
+private class HoldVoiceRecorder {
+    private var recorder: MediaRecorder? = null
+    private var outputFile: File? = null
+    private var startedAtMillis: Long = 0L
+
+    fun start(context: Context): Boolean {
+        cancel()
+        val file = File.createTempFile("duey_voice_", ".m4a", context.cacheDir)
+        val mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+
+        return try {
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            mediaRecorder.setAudioSamplingRate(44_100)
+            mediaRecorder.setAudioEncodingBitRate(96_000)
+            mediaRecorder.setOutputFile(file.absolutePath)
+            mediaRecorder.prepare()
+            mediaRecorder.start()
+            recorder = mediaRecorder
+            outputFile = file
+            startedAtMillis = SystemClock.elapsedRealtime()
+            true
+        } catch (_: RuntimeException) {
+            mediaRecorder.release()
+            file.delete()
+            false
+        }
+    }
+
+    fun currentLevel(): Float {
+        val amplitude = try {
+            recorder?.maxAmplitude ?: 0
+        } catch (_: RuntimeException) {
+            0
+        }
+        return (amplitude / 32767f).coerceIn(0.05f, 1f)
+    }
+
+    fun stop(): VoiceRecording? {
+        val mediaRecorder = recorder ?: return null
+        val file = outputFile ?: return null
+        val duration = SystemClock.elapsedRealtime() - startedAtMillis
+        recorder = null
+        outputFile = null
+        return try {
+            mediaRecorder.stop()
+            mediaRecorder.release()
+            VoiceRecording(file = file, mimeType = "audio/mp4", durationMillis = duration)
+        } catch (_: RuntimeException) {
+            mediaRecorder.release()
+            file.delete()
+            null
+        }
+    }
+
+    fun cancel() {
+        val mediaRecorder = recorder
+        val file = outputFile
+        recorder = null
+        outputFile = null
+        if (mediaRecorder != null) {
+            try {
+                mediaRecorder.stop()
+            } catch (_: RuntimeException) {
+            }
+            mediaRecorder.release()
+        }
+        file?.delete()
+    }
+}
+
+@Composable
+private fun VoiceRecordingBubble(levels: List<Float>) {
+    Surface(
+        modifier = Modifier
+            .padding(bottom = 68.dp)
+            .width(172.dp)
+            .height(52.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 6.dp,
+        shadowElevation = 6.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(VOICE_LEVEL_COUNT) { index ->
+                val level = levels.getOrNull(index) ?: 0.08f
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height((8 + (24 * level)).dp)
+                        .clip(RoundedCornerShape(100))
+                        .background(MaterialTheme.colorScheme.onPrimaryContainer),
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun CategoryAddDialog(

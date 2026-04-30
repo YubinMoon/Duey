@@ -2,14 +2,14 @@ package com.terry.duey.ai
 
 import com.terry.duey.BuildConfig
 import com.terry.duey.model.AppDate
-import java.util.Base64
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import org.json.JSONObject
+import java.util.Base64
 
 data class ParsedScheduleDraft(
     val title: String,
