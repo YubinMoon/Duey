@@ -48,7 +48,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -87,6 +86,7 @@ import com.terry.duey.viewmodel.TodoViewModel
 import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Calendar
+import kotlin.math.log10
 
 @Composable
 fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
@@ -345,15 +345,23 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                     if (isRecordingVoice) {
                         VoiceRecordingBubble(levels = voiceLevels)
                     }
-                    FilledIconButton(
-                        onClick = {},
+                    val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
+                    Box(
                         modifier = Modifier
                             .size(56.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isVoiceButtonEnabled) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
+                            )
                             .testTag("btn_voice_add_schedule")
                             .pointerInput(voiceState) {
                                 detectTapGestures(
                                     onPress = {
-                                        if (voiceState is TodoViewModel.VoiceInputUiState.Processing) return@detectTapGestures
+                                        if (!isVoiceButtonEnabled) return@detectTapGestures
                                         val hasPermission = ContextCompat.checkSelfPermission(
                                             context,
                                             Manifest.permission.RECORD_AUDIO,
@@ -364,7 +372,11 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                                         }
 
                                         voiceLevels.clear()
+                                        repeat(VOICE_LEVEL_COUNT) {
+                                            voiceLevels.add(0.08f)
+                                        }
                                         if (!voiceRecorder.start(context)) {
+                                            isRecordingVoice = false
                                             viewModel.clearVoiceInputState()
                                             return@detectTapGestures
                                         }
@@ -386,9 +398,17 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                                     },
                                 )
                             },
-                        enabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing,
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Mic, contentDescription = "음성으로 일정 입력")
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = "음성으로 일정 입력",
+                            tint = if (isVoiceButtonEnabled) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
                     }
                 }
             }
@@ -456,7 +476,9 @@ private class HoldVoiceRecorder {
         } catch (_: RuntimeException) {
             0
         }
-        return (amplitude / 32767f).coerceIn(0.05f, 1f)
+        if (amplitude <= 0) return 0.05f
+        val decibels = 20f * log10(amplitude / 32767f)
+        return ((decibels + 60f) / 60f).coerceIn(0.05f, 1f)
     }
 
     fun stop(): VoiceRecording? {
@@ -497,29 +519,42 @@ private fun VoiceRecordingBubble(levels: List<Float>) {
     Surface(
         modifier = Modifier
             .padding(bottom = 68.dp)
-            .width(172.dp)
-            .height(52.dp),
-        shape = RoundedCornerShape(18.dp),
+            .width(216.dp)
+            .height(72.dp),
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
         tonalElevation = 6.dp,
         shadowElevation = 6.dp,
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         ) {
-            repeat(VOICE_LEVEL_COUNT) { index ->
-                val level = levels.getOrNull(index) ?: 0.08f
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .height((8 + (24 * level)).dp)
-                        .clip(RoundedCornerShape(100))
-                        .background(MaterialTheme.colorScheme.onPrimaryContainer),
-                )
+            Text(
+                text = "녹음 중",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.Bold,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(VOICE_LEVEL_COUNT) { index ->
+                    val newestFirstIndex = levels.lastIndex - index
+                    val level = levels.getOrNull(newestFirstIndex)?.coerceIn(0.05f, 1f) ?: 0.05f
+                    Box(
+                        modifier = Modifier
+                            .width(5.dp)
+                            .height((6 + (30 * level)).dp)
+                            .clip(RoundedCornerShape(100))
+                            .background(MaterialTheme.colorScheme.onPrimaryContainer),
+                    )
+                }
             }
         }
     }
