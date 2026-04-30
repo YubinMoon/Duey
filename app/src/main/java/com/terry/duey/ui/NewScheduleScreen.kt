@@ -33,6 +33,8 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,7 +46,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +63,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.provider.MediaStore
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
@@ -82,6 +94,32 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     var showRangePicker by remember { mutableStateOf(false) }
     var showCategorySelect by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val voiceState by viewModel.voiceInputState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val recordAudioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = result.data?.data
+            val audioBytes = uri?.let { context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes() } }.orEmpty()
+            val mime = uri?.let { context.contentResolver.getType(it) } ?: "audio/mp4"
+            viewModel.submitVoiceAudio(audioBytes, mime)
+        } else {
+            viewModel.clearVoiceInputState()
+        }
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) recordAudioLauncher.launch(createRecordAudioIntent()) else viewModel.clearVoiceInputState()
+    }
+
+    LaunchedEffect(voiceState) {
+        if (voiceState is TodoViewModel.VoiceInputUiState.DraftReady) {
+            val draft = (voiceState as TodoViewModel.VoiceInputUiState.DraftReady).draft
+            title = draft.title
+            description = draft.description
+            category = draft.category
+            startDate = draft.startDate
+            endDate = draft.endDate
+        }
+    }
 
     if (showRangePicker) {
         RangeDatePickerDialog(
@@ -257,36 +295,57 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                 Spacer(Modifier.height(40.dp))
             }
 
-            Button(
-                onClick = {
-                    viewModel.addTodo(
-                        TodoItem(
-                            title = title.trim(),
-                            description = description.trim(),
-                            category = category,
-                            startDate = startDate,
-                            endDate = endDate,
-                        ),
-                    )
-                    onSaved()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(bottom = 8.dp),
-                shape = RoundedCornerShape(100),
-                enabled = title.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
+                Button(
+                    onClick = {
+                        viewModel.addTodo(
+                            TodoItem(
+                                title = title.trim(),
+                                description = description.trim(),
+                                category = category,
+                                startDate = startDate,
+                                endDate = endDate,
+                            ),
+                        )
+                        onSaved()
+                    },
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(100),
+                    enabled = title.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
+                }
+                FilledIconButton(
+                    onClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                    modifier = Modifier.size(56.dp).testTag("btn_voice_add_schedule"),
+                    enabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing,
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = "음성으로 일정 입력")
+                }
             }
             Spacer(Modifier.height(16.dp))
         }
     }
+
+    if (voiceState is TodoViewModel.VoiceInputUiState.Error) {
+        AlertDialog(
+            onDismissRequest = viewModel::clearVoiceInputState,
+            confirmButton = { TextButton(onClick = viewModel::clearVoiceInputState) { Text("확인") } },
+            title = { Text("음성 입력 오류") },
+            text = { Text((voiceState as TodoViewModel.VoiceInputUiState.Error).message) },
+        )
+    }
 }
+
+private fun createRecordAudioIntent(): Intent = Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)
 
 @Composable
 fun CategoryAddDialog(

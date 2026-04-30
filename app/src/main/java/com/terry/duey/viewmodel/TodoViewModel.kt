@@ -5,6 +5,8 @@ import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
+import com.terry.duey.ai.ParsedScheduleDraft
+import com.terry.duey.ai.ScheduleVoiceParser
 import com.terry.duey.data.AppDatabase
 import com.terry.duey.data.DEFAULT_CATEGORIES
 import com.terry.duey.data.DEFAULT_CATEGORY
@@ -13,11 +15,14 @@ import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
 import com.terry.duey.model.TodoItem
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -34,10 +39,20 @@ private val todoListComparator =
     compareBy<TodoItem>({ it.startDate }, { it.endDate }, { it.title }, { it.id })
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
+    sealed interface VoiceInputUiState {
+        data object Idle : VoiceInputUiState
+        data object Processing : VoiceInputUiState
+        data class DraftReady(val draft: ParsedScheduleDraft) : VoiceInputUiState
+        data class Error(val message: String) : VoiceInputUiState
+    }
+
     private val database = AppDatabase.getDatabase(application)
     private val todoDao = database.todoDao()
     private val categoryDao = database.categoryDao()
     private val isDebugBuild = (application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    private val voiceParser = ScheduleVoiceParser()
+    private val _voiceInputState = MutableStateFlow<VoiceInputUiState>(VoiceInputUiState.Idle)
+    val voiceInputState: StateFlow<VoiceInputUiState> = _voiceInputState
 
     val todos: StateFlow<List<TodoItem>> =
         todoDao.getAllTodos()
@@ -68,6 +83,25 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             todoDao.insertTodo(item.normalized())
         }
+    }
+
+    fun submitVoiceAudio(audioBytes: ByteArray, mimeType: String) {
+        if (audioBytes.isEmpty()) {
+            _voiceInputState.value = VoiceInputUiState.Error("음성 데이터가 비어 있습니다.")
+            return
+        }
+        _voiceInputState.value = VoiceInputUiState.Processing
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { voiceParser.parseAudio(audioBytes, mimeType) }
+            _voiceInputState.value = result.fold(
+                onSuccess = { VoiceInputUiState.DraftReady(it) },
+                onFailure = { VoiceInputUiState.Error(it.message ?: "음성 일정 변환에 실패했습니다.") },
+            )
+        }
+    }
+
+    fun clearVoiceInputState() {
+        _voiceInputState.value = VoiceInputUiState.Idle
     }
 
     fun updateTodo(updatedItem: TodoItem) {
