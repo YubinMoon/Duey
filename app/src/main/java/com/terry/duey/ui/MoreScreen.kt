@@ -274,7 +274,7 @@ private fun AllSchedulesScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "삭제 모드",
-                                tint = SundayRed
+                                tint = SundayRed,
                             )
                         }
                     } else {
@@ -408,9 +408,13 @@ private fun AllScheduleRow(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     textDecoration = if (todo.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (todo.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                        alpha = 0.6f
-                    ) else MaterialTheme.colorScheme.onSurface,
+                    color = if (todo.isCompleted) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = 0.6f,
+                        )
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

@@ -130,8 +130,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun getTodosForDate(date: AppDate): List<TodoItem> = todos.value.filter { it.startDate <= date && date <= it.endDate }
-
     fun addCategory(name: String) {
         val normalizedName = name.trim()
         if (normalizedName.isBlank()) return

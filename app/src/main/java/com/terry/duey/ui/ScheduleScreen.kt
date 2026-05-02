@@ -230,24 +230,24 @@ private fun ScheduleContent(
                     val duration = 150
                     if (targetIndex > prevMonthIndex) {
                         (
-                                slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
-                                    tween(duration),
-                                )
-                                ).togetherWith(
-                                slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
-                                    tween(duration),
-                                ),
+                            slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
+                                tween(duration),
                             )
+                            ).togetherWith(
+                            slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
+                                tween(duration),
+                            ),
+                        )
                     } else {
                         (
-                                slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
-                                    tween(duration),
-                                )
-                                ).togetherWith(
-                                slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
-                                    tween(duration),
-                                ),
+                            slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
+                                tween(duration),
                             )
+                            ).togetherWith(
+                            slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
+                                tween(duration),
+                            ),
+                        )
                     }
                 }, label = "month_transition") { (targetYear, targetMonth) ->
                     val firstDay = getFirstDayOfWeek(targetYear, targetMonth)
@@ -324,7 +324,8 @@ private fun ScheduleContent(
                                 compareBy(
                                     { it.isCompleted },
                                     { it.endDate },
-                                    { it.startDate })
+                                    { it.startDate },
+                                ),
                             )
                     }
                 }

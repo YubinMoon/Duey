@@ -237,7 +237,7 @@ private fun HomeworkContent(
                         modifier = Modifier.clickable {
                             onTodayClick()
                             scope.launch { lazyListState.animateScrollToItem(0) }
-                        }
+                        },
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -458,7 +458,7 @@ private fun HomeworkScreenPreview() {
             description = "기하와 벡터 12p",
             startDate = today,
             endDate = today,
-            category = "학업"
+            category = "학업",
         ),
         TodoItem(
             id = 2,
@@ -466,7 +466,7 @@ private fun HomeworkScreenPreview() {
             description = "VOCA 2000",
             startDate = today,
             endDate = today.addDays(1),
-            category = "학업"
+            category = "학업",
         ),
         TodoItem(
             id = 3,
@@ -474,7 +474,7 @@ private fun HomeworkScreenPreview() {
             description = "우유, 사과",
             startDate = today.addDays(1),
             endDate = today.addDays(1),
-            category = "개인"
+            category = "개인",
         ),
         TodoItem(
             id = 4,
@@ -483,7 +483,7 @@ private fun HomeworkScreenPreview() {
             startDate = today,
             endDate = today.addDays(3),
             category = "운동",
-            isCompleted = true
+            isCompleted = true,
         ),
     )
 
@@ -491,7 +491,8 @@ private fun HomeworkScreenPreview() {
         DateGroup(today, mockTodos.filter { it.startDate <= today && today <= it.endDate }),
         DateGroup(
             today.addDays(1),
-            mockTodos.filter { it.startDate <= today.addDays(1) && today.addDays(1) <= it.endDate }),
+            mockTodos.filter { it.startDate <= today.addDays(1) && today.addDays(1) <= it.endDate },
+        ),
     )
 
     MyTodoTheme {

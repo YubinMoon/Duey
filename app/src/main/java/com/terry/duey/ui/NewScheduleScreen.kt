@@ -313,7 +313,7 @@ private fun NewScheduleContent(
                             .fillMaxWidth()
                             .background(
                                 MaterialTheme.colorScheme.surface,
-                                RoundedCornerShape(18.dp)
+                                RoundedCornerShape(18.dp),
                             )
                             .border(
                                 width = 1.dp,
@@ -561,7 +561,7 @@ private fun VoiceRecordButton(
                                     val progress =
                                         ((distance - radiusPx) / (cancelThresholdPx - radiusPx)).coerceIn(
                                             0f,
-                                            1f
+                                            1f,
                                         )
                                     if (distance > radiusPx) {
                                         onButtonStateChange(VoiceButtonState.CancelPreview(progress))
@@ -601,7 +601,7 @@ private fun VoiceRecordButton(
                             .size(18.dp)
                             .background(
                                 MaterialTheme.colorScheme.onError,
-                                RoundedCornerShape(3.dp)
+                                RoundedCornerShape(3.dp),
                             ),
                     )
                 }
@@ -720,54 +720,6 @@ private class HoldVoiceRecorder {
 }
 
 @Composable
-private fun VoiceRecordingBubble(
-    levels: List<Float>,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier
-            .width(216.dp)
-            .height(72.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        tonalElevation = 6.dp,
-        shadowElevation = 6.dp,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        ) {
-            Text(
-                text = "녹음 중",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.Bold,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                repeat(VOICE_LEVEL_COUNT) { index ->
-                    val newestFirstIndex = levels.lastIndex - index
-                    val level = levels.getOrNull(newestFirstIndex)?.coerceIn(0.05f, 1f) ?: 0.05f
-                    Box(
-                        modifier = Modifier
-                            .width(5.dp)
-                            .height((6 + (30 * level)).dp)
-                            .clip(RoundedCornerShape(100))
-                            .background(MaterialTheme.colorScheme.onPrimaryContainer),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun VoiceRecordingOverlay(
     levels: List<Float>,
     modifier: Modifier = Modifier,
@@ -808,10 +760,10 @@ private fun VoiceRecordingOverlay(
                     val midBandLift = sin(bandPosition * PI).toFloat().coerceAtLeast(0f)
                     val bandRipple = (sin((index * 1.71f) + motionPhase) + 1f) * 0.5f
                     val level = (
-                            0.12f +
-                                    inputLevel * (0.32f + midBandLift * 0.48f) +
-                                    bandRipple * 0.18f
-                            ).coerceIn(0.12f, 1f)
+                        0.12f +
+                            inputLevel * (0.32f + midBandLift * 0.48f) +
+                            bandRipple * 0.18f
+                        ).coerceIn(0.12f, 1f)
                     Box(
                         modifier = Modifier
                             .width(4.dp)
@@ -1041,24 +993,24 @@ internal fun RangeDatePickerDialog(
                     val duration = 150
                     if (targetIndex > prevMonthIndex) {
                         (
-                                slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
-                                    tween(duration),
-                                )
-                                ).togetherWith(
-                                slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
-                                    tween(duration),
-                                ),
+                            slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
+                                tween(duration),
                             )
+                            ).togetherWith(
+                            slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
+                                tween(duration),
+                            ),
+                        )
                     } else {
                         (
-                                slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
-                                    tween(duration),
-                                )
-                                ).togetherWith(
-                                slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
-                                    tween(duration),
-                                ),
+                            slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
+                                tween(duration),
                             )
+                            ).togetherWith(
+                            slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
+                                tween(duration),
+                            ),
+                        )
                     }
                 }, label = "dialog_month_transition") { (targetYear, targetMonth) ->
                     val cal = Calendar.getInstance()

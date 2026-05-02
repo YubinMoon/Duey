@@ -30,7 +30,6 @@ android {
             buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
             // TODO: Replace with real GitHub-hosted stage version.json URL.
             buildConfigField("String", "UPDATE_CHECK_URL", "\"https://example.com/duey/stage/version.json\"")
-            buildConfigField("String", "UPDATE_CHANNEL", "\"stage\"")
         }
         create("prod") {
             dimension = "environment"
@@ -38,7 +37,6 @@ android {
             buildConfigField("boolean", "IS_STAGE", "false")
             buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "false")
             buildConfigField("String", "UPDATE_CHECK_URL", "\"\"")
-            buildConfigField("String", "UPDATE_CHANNEL", "\"prod\"")
         }
     }
 
