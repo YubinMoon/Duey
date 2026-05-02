@@ -1,0 +1,125 @@
+name: Stage APK Release
+
+on:
+  push:
+    branches:
+      - stage
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release-stage:
+    runs-on: ubuntu-latest
+    env:
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve local app version
+        id: local_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' app/build.gradle.kts | head -n1)
+          VERSION_NAME=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve latest released stage version
+        id: remote_version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          API="https://api.github.com/repos/${REPO}/releases/tags/stage-latest"
+          STATUS=$(curl -s -o release.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "$API")
+
+          if [ "$STATUS" = "404" ]; then
+            echo "remote_version_code=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          test "$STATUS" = "200"
+
+          VERSION_ASSET_URL=$(jq -r '.assets[] | select(.name == "version.json") | .browser_download_url' release.json)
+          if [ -z "$VERSION_ASSET_URL" ] || [ "$VERSION_ASSET_URL" = "null" ]; then
+            echo "remote_version_code=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          curl -sSL "$VERSION_ASSET_URL" -o remote-version.json
+          REMOTE_VERSION_CODE=$(jq -r '.versionCode // 0' remote-version.json)
+          echo "remote_version_code=${REMOTE_VERSION_CODE}" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to build release
+        id: should_release
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOCAL=${{ steps.local_version.outputs.version_code }}
+          REMOTE=${{ steps.remote_version.outputs.remote_version_code }}
+          if [ "$LOCAL" -gt "$REMOTE" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build stage APK
+        if: steps.should_release.outputs.release == 'true'
+        run: ./gradlew assembleStageDebug
+
+      - name: Create version.json for stage updater
+        if: steps.should_release.outputs.release == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_CODE=${{ steps.local_version.outputs.version_code }}
+          VERSION_NAME=${{ steps.local_version.outputs.version_name }}
+          TAG="stage-v${VERSION_CODE}"
+          APK_NAME="app-stage-debug.apk"
+
+          cat > version.json <<JSON
+          {
+            "versionCode": ${VERSION_CODE},
+            "versionName": "${VERSION_NAME}-stage",
+            "apkUrl": "https://github.com/${REPO}/releases/download/${TAG}/${APK_NAME}",
+            "releaseNotes": "Auto release from stage branch (${GITHUB_SHA})",
+            "forceUpdate": false
+          }
+          JSON
+
+      - name: Publish GitHub Release
+        if: steps.should_release.outputs.release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: stage-latest
+          name: Stage Latest
+          make_latest: false
+          files: |
+            app/build/outputs/apk/stage/debug/app-stage-debug.apk
+            version.json
+          body: |
+            Automated stage release.
+            - versionCode: ${{ steps.local_version.outputs.version_code }}
+            - versionName: ${{ steps.local_version.outputs.version_name }}
+            - commit: ${{ github.sha }}
+
+      - name: Skip info
+        if: steps.should_release.outputs.release != 'true'
+        run: |
+          echo "Skip release: local versionCode (${{ steps.local_version.outputs.version_code }}) is not newer than remote (${{ steps.remote_version.outputs.remote_version_code }})."

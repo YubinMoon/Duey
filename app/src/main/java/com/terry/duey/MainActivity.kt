@@ -35,15 +35,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.terry.duey.ui.HomeworkScreen
 import com.terry.duey.ui.MoreScreen
 import com.terry.duey.ui.NewScheduleScreen
 import com.terry.duey.ui.ScheduleScreen
 import com.terry.duey.ui.theme.MyTodoTheme
+import com.terry.duey.update.StageUpdateManager
 import com.terry.duey.viewmodel.TodoViewModel
 
 class MainActivity : ComponentActivity() {
+    private val stageUpdateManager = StageUpdateManager()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -52,6 +56,8 @@ class MainActivity : ComponentActivity() {
                 MainScreen()
             }
         }
+
+        stageUpdateManager.checkAndPrompt(this, lifecycleScope)
     }
 }
 

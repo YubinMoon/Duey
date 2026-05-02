@@ -26,10 +26,19 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".stage"
             resValue("string", "app_name", "Duey Stage")
+            buildConfigField("boolean", "IS_STAGE", "true")
+            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
+            // TODO: Replace with real GitHub-hosted stage version.json URL.
+            buildConfigField("String", "UPDATE_CHECK_URL", "\"https://example.com/duey/stage/version.json\"")
+            buildConfigField("String", "UPDATE_CHANNEL", "\"stage\"")
         }
         create("prod") {
             dimension = "environment"
             resValue("string", "app_name", "Duey")
+            buildConfigField("boolean", "IS_STAGE", "false")
+            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "false")
+            buildConfigField("String", "UPDATE_CHECK_URL", "\"\"")
+            buildConfigField("String", "UPDATE_CHANNEL", "\"prod\"")
         }
     }
 
