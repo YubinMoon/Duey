@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,8 +73,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
@@ -415,14 +416,15 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                 }
                 Spacer(Modifier.height(16.dp))
             }
-            if (isRecordingVoice) {
-                VoiceRecordingOverlay(
-                    levels = voiceLevels,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .offset(y = 52.dp),
-                )
-            }
+        }
+    }
+
+    if (isRecordingVoice) {
+        Popup(
+            alignment = Alignment.BottomCenter,
+            offset = IntOffset(0, 152),
+        ) {
+            VoiceRecordingOverlay(levels = voiceLevels)
         }
     }
 
