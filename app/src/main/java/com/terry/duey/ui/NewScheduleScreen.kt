@@ -119,9 +119,10 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     var isRecordingVoice by remember { mutableStateOf(false) }
     var voiceButtonState by remember { mutableStateOf<VoiceButtonState>(VoiceButtonState.Idle) }
     val voiceLevels = remember { mutableStateListOf<Float>() }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) viewModel.clearVoiceInputState()
-    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) viewModel.clearVoiceInputState()
+        }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -290,19 +291,30 @@ private fun NewScheduleContent(
                         .weight(1f)
                         .verticalScroll(scrollState),
                 ) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "새 일정 만들기",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "새 일정 만들기",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
 
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surface,
+                                RoundedCornerShape(18.dp)
+                            )
                             .border(
                                 width = 1.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -428,13 +440,17 @@ private fun NewScheduleContent(
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Button(
                         onClick = onSave,
-                        modifier = Modifier.weight(1f).height(56.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
                         shape = RoundedCornerShape(100),
                         enabled = title.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
@@ -483,7 +499,8 @@ private fun VoiceRecordButton(
     val radiusPx = with(density) { VOICE_BUTTON_RADIUS.toPx() }
     val cancelThresholdPx = with(density) { VOICE_CANCEL_THRESHOLD.toPx() }
     val cancelProgress = (buttonState as? VoiceButtonState.CancelPreview)?.progress ?: 0f
-    val cancelCircleSize = VOICE_BUTTON_SIZE + ((VOICE_CANCEL_VISUAL_MAX_SIZE - VOICE_BUTTON_SIZE) * 2 * cancelProgress)
+    val cancelCircleSize =
+        VOICE_BUTTON_SIZE + ((VOICE_CANCEL_VISUAL_MAX_SIZE - VOICE_BUTTON_SIZE) * 2 * cancelProgress)
     val cancelCircleAlpha = 0.12f + (0.5f * cancelProgress)
     val activeColor = SundayRed
 
@@ -528,7 +545,8 @@ private fun VoiceRecordButton(
 
                         while (!released && !canceled) {
                             val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: event.changes.firstOrNull()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                                ?: event.changes.firstOrNull()
 
                             if (change == null || !change.pressed) {
                                 released = true
@@ -540,7 +558,11 @@ private fun VoiceRecordButton(
                                     onButtonStateChange(VoiceButtonState.Idle)
                                     canceled = true
                                 } else {
-                                    val progress = ((distance - radiusPx) / (cancelThresholdPx - radiusPx)).coerceIn(0f, 1f)
+                                    val progress =
+                                        ((distance - radiusPx) / (cancelThresholdPx - radiusPx)).coerceIn(
+                                            0f,
+                                            1f
+                                        )
                                     if (distance > radiusPx) {
                                         onButtonStateChange(VoiceButtonState.CancelPreview(progress))
                                     } else {
@@ -577,7 +599,10 @@ private fun VoiceRecordButton(
                     Box(
                         modifier = Modifier
                             .size(18.dp)
-                            .background(MaterialTheme.colorScheme.onError, RoundedCornerShape(3.dp)),
+                            .background(
+                                MaterialTheme.colorScheme.onError,
+                                RoundedCornerShape(3.dp)
+                            ),
                     )
                 }
 
@@ -783,10 +808,10 @@ private fun VoiceRecordingOverlay(
                     val midBandLift = sin(bandPosition * PI).toFloat().coerceAtLeast(0f)
                     val bandRipple = (sin((index * 1.71f) + motionPhase) + 1f) * 0.5f
                     val level = (
-                        0.12f +
-                            inputLevel * (0.32f + midBandLift * 0.48f) +
-                            bandRipple * 0.18f
-                        ).coerceIn(0.12f, 1f)
+                            0.12f +
+                                    inputLevel * (0.32f + midBandLift * 0.48f) +
+                                    bandRipple * 0.18f
+                            ).coerceIn(0.12f, 1f)
                     Box(
                         modifier = Modifier
                             .width(4.dp)
@@ -1016,24 +1041,24 @@ internal fun RangeDatePickerDialog(
                     val duration = 150
                     if (targetIndex > prevMonthIndex) {
                         (
-                            slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
-                                tween(duration),
+                                slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
+                                    tween(duration),
+                                )
+                                ).togetherWith(
+                                slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
+                                    tween(duration),
+                                ),
                             )
-                            ).togetherWith(
-                            slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
-                                tween(duration),
-                            ),
-                        )
                     } else {
                         (
-                            slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
-                                tween(duration),
+                                slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
+                                    tween(duration),
+                                )
+                                ).togetherWith(
+                                slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
+                                    tween(duration),
+                                ),
                             )
-                            ).togetherWith(
-                            slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
-                                tween(duration),
-                            ),
-                        )
                     }
                 }, label = "dialog_month_transition") { (targetYear, targetMonth) ->
                     val cal = Calendar.getInstance()
@@ -1072,11 +1097,13 @@ internal fun RangeDatePickerDialog(
                                             pM,
                                             pDays + dayNum,
                                         )
+
                                         dayNum > daysInM -> AppDate(
                                             nY,
                                             nM,
                                             dayNum - daysInM,
                                         )
+
                                         else -> AppDate(targetYear, targetMonth, dayNum)
                                     }
                                     val isS = date == tempStart
@@ -1097,10 +1124,12 @@ internal fun RangeDatePickerDialog(
                                                     topStartPercent = 50,
                                                     bottomStartPercent = 50,
                                                 )
+
                                                 isE -> RoundedCornerShape(
                                                     topEndPercent = 50,
                                                     bottomEndPercent = 50,
                                                 )
+
                                                 else -> RoundedCornerShape(0)
                                             }
                                             Box(
@@ -1166,6 +1195,7 @@ internal fun RangeDatePickerDialog(
                                                     col == 0 -> SundayRed.copy(
                                                         alpha = alpha,
                                                     )
+
                                                     col == 6 -> SaturdayBlue.copy(alpha = alpha)
                                                     else -> MaterialTheme.colorScheme.onSurface.copy(
                                                         alpha = alpha,

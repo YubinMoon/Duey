@@ -154,11 +154,14 @@ private fun ScheduleContent(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp),
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = "내 일정",
@@ -173,7 +176,7 @@ private fun ScheduleContent(
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
             Column(
                 modifier = Modifier
@@ -227,24 +230,24 @@ private fun ScheduleContent(
                     val duration = 150
                     if (targetIndex > prevMonthIndex) {
                         (
-                            slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
-                                tween(duration),
+                                slideInHorizontally(animationSpec = tween(duration)) { w -> w } + fadeIn(
+                                    tween(duration),
+                                )
+                                ).togetherWith(
+                                slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
+                                    tween(duration),
+                                ),
                             )
-                            ).togetherWith(
-                            slideOutHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeOut(
-                                tween(duration),
-                            ),
-                        )
                     } else {
                         (
-                            slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
-                                tween(duration),
+                                slideInHorizontally(animationSpec = tween(duration)) { w -> -w } + fadeIn(
+                                    tween(duration),
+                                )
+                                ).togetherWith(
+                                slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
+                                    tween(duration),
+                                ),
                             )
-                            ).togetherWith(
-                            slideOutHorizontally(animationSpec = tween(duration)) { w -> w } + fadeOut(
-                                tween(duration),
-                            ),
-                        )
                     }
                 }, label = "month_transition") { (targetYear, targetMonth) ->
                     val firstDay = getFirstDayOfWeek(targetYear, targetMonth)
@@ -276,8 +279,9 @@ private fun ScheduleContent(
                                         null
                                     }
 
-                                    val isInRange = currentSelectedTodo?.let { date >= it.startDate && date <= it.endDate }
-                                        ?: false
+                                    val isInRange =
+                                        currentSelectedTodo?.let { date >= it.startDate && date <= it.endDate }
+                                            ?: false
 
                                     val count = todoCounts[date] ?: 0
 
@@ -316,7 +320,12 @@ private fun ScheduleContent(
                 val dayTodos by remember(selectedDate, todos) {
                     derivedStateOf {
                         todos.filter { it.startDate <= selectedDate && selectedDate <= it.endDate }
-                            .sortedWith(compareBy({ it.isCompleted }, { it.endDate }, { it.startDate }))
+                            .sortedWith(
+                                compareBy(
+                                    { it.isCompleted },
+                                    { it.endDate },
+                                    { it.startDate })
+                            )
                     }
                 }
 
@@ -418,6 +427,7 @@ private fun RowScope.DayCell(
                         col == 0 -> SundayRed.copy(
                             alpha = contentAlpha,
                         )
+
                         col == 6 -> SaturdayBlue.copy(alpha = contentAlpha)
                         else -> MaterialTheme.colorScheme.onSurface.copy(
                             alpha = contentAlpha,

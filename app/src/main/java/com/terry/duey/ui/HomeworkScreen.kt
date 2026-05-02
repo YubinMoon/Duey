@@ -210,11 +210,13 @@ private fun HomeworkContent(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp),
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = "오늘의 숙제",
@@ -223,39 +225,42 @@ private fun HomeworkContent(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Surface(
-                    onClick = {
-                        onTodayClick()
-                        scope.launch { lazyListState.animateScrollToItem(0) }
-                    },
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surface,
                     border = BorderStroke(
                         1.dp,
                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                     ),
-                    modifier = Modifier.padding(bottom = 2.dp),
+                    modifier = Modifier.padding(0.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Box(
+                        modifier = Modifier.clickable {
+                            onTodayClick()
+                            scope.launch { lazyListState.animateScrollToItem(0) }
+                        }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Today,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "오늘",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Today,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "오늘",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
             Box(
                 modifier = Modifier
@@ -447,15 +452,46 @@ private fun TodoRow(
 private fun HomeworkScreenPreview() {
     val today = AppDate.today()
     val mockTodos = listOf(
-        TodoItem(id = 1, title = "수학 숙제", description = "기하와 벡터 12p", startDate = today, endDate = today, category = "학업"),
-        TodoItem(id = 2, title = "영어 단어", description = "VOCA 2000", startDate = today, endDate = today.addDays(1), category = "학업"),
-        TodoItem(id = 3, title = "장보기", description = "우유, 사과", startDate = today.addDays(1), endDate = today.addDays(1), category = "개인"),
-        TodoItem(id = 4, title = "운동하기", description = "조깅 5km", startDate = today, endDate = today.addDays(3), category = "운동", isCompleted = true),
+        TodoItem(
+            id = 1,
+            title = "수학 숙제",
+            description = "기하와 벡터 12p",
+            startDate = today,
+            endDate = today,
+            category = "학업"
+        ),
+        TodoItem(
+            id = 2,
+            title = "영어 단어",
+            description = "VOCA 2000",
+            startDate = today,
+            endDate = today.addDays(1),
+            category = "학업"
+        ),
+        TodoItem(
+            id = 3,
+            title = "장보기",
+            description = "우유, 사과",
+            startDate = today.addDays(1),
+            endDate = today.addDays(1),
+            category = "개인"
+        ),
+        TodoItem(
+            id = 4,
+            title = "운동하기",
+            description = "조깅 5km",
+            startDate = today,
+            endDate = today.addDays(3),
+            category = "운동",
+            isCompleted = true
+        ),
     )
 
     val groups = listOf(
         DateGroup(today, mockTodos.filter { it.startDate <= today && today <= it.endDate }),
-        DateGroup(today.addDays(1), mockTodos.filter { it.startDate <= today.addDays(1) && today.addDays(1) <= it.endDate }),
+        DateGroup(
+            today.addDays(1),
+            mockTodos.filter { it.startDate <= today.addDays(1) && today.addDays(1) <= it.endDate }),
     )
 
     MyTodoTheme {

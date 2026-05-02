@@ -127,14 +127,22 @@ private fun MoreMenuContent(
             .fillMaxSize()
             .padding(horizontal = 20.dp),
     ) {
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "설정",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "설정",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -263,7 +271,11 @@ private fun AllSchedulesScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
                 actions = {
                     if (!isDeleteMode) {
                         IconButton(onClick = { isDeleteMode = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "삭제 모드", tint = SundayRed)
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "삭제 모드",
+                                tint = SundayRed
+                            )
                         }
                     } else {
                         TextButton(onClick = {
@@ -396,7 +408,9 @@ private fun AllScheduleRow(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     textDecoration = if (todo.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (todo.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface,
+                    color = if (todo.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                        alpha = 0.6f
+                    ) else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
