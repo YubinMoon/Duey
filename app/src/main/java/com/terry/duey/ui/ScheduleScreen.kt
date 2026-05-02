@@ -82,14 +82,42 @@ import java.util.Calendar
 @Composable
 fun ScheduleScreen(viewModel: TodoViewModel) {
     val today = remember { AppDate.today() }
-
     val todos by viewModel.todos.collectAsStateWithLifecycle()
+    var detailTodoId by remember { mutableStateOf<Long?>(null) }
 
+    if (detailTodoId != null) {
+        val currentTodo = remember(detailTodoId, todos) {
+            todos.find { it.id == detailTodoId }
+        }
+        if (currentTodo != null) {
+            DetailDialog(
+                todo = currentTodo,
+                viewModel = viewModel,
+                today = today,
+                onDismiss = { detailTodoId = null },
+            )
+        } else {
+            detailTodoId = null
+        }
+    }
+
+    ScheduleContent(
+        today = today,
+        todos = todos,
+        onOpenTodoDetail = { detailTodoId = it.id },
+    )
+}
+
+@Composable
+private fun ScheduleContent(
+    today: AppDate,
+    todos: List<TodoItem>,
+    onOpenTodoDetail: (TodoItem) -> Unit,
+) {
     var selectedDate by remember { mutableStateOf(today) }
     var calYear by remember { mutableIntStateOf(today.year) }
     var calMonth by remember { mutableIntStateOf(today.month) }
     var selectedTodoId by remember { mutableStateOf<Long?>(null) }
-    var showDetailDialog by remember { mutableStateOf(false) }
 
     var prevMonthIndex by remember { mutableIntStateOf(calYear * 12 + calMonth) }
 
@@ -117,22 +145,6 @@ fun ScheduleScreen(viewModel: TodoViewModel) {
                 }
             }
             counts
-        }
-    }
-
-    if (showDetailDialog && selectedTodoId != null) {
-        val currentTodo = remember(selectedTodoId, todos) {
-            todos.find { it.id == selectedTodoId }
-        }
-        if (currentTodo != null) {
-            DetailDialog(
-                todo = currentTodo,
-                viewModel = viewModel,
-                today = today,
-                onDismiss = { showDetailDialog = false },
-            )
-        } else {
-            showDetailDialog = false
         }
     }
 
@@ -328,7 +340,7 @@ fun ScheduleScreen(viewModel: TodoViewModel) {
                                 isSelected = selectedTodoId == todo.id,
                                 onClick = {
                                     if (selectedTodoId == todo.id) {
-                                        showDetailDialog = true
+                                        onOpenTodoDetail(todo)
                                     } else {
                                         selectedTodoId = todo.id
                                     }
@@ -834,142 +846,39 @@ private fun changeMonth(y: Int, m: Int, delta: Int): Pair<Int, Int> {
 private fun ScheduleScreenPreview() {
     val today = AppDate.today()
     val selectedDate = today.addDays(1)
-    val todos =
-        listOf(
-            TodoItem(
-                id = 1,
-                title = "팀 프로젝트 회의",
-                description = "요구사항 정리와 화면 분담",
-                startDate = today,
-                endDate = today.addDays(2),
-                category = "학업",
-            ),
-            TodoItem(
-                id = 2,
-                title = "운동",
-                description = "저녁 러닝 5km",
-                startDate = selectedDate,
-                endDate = selectedDate,
-                category = "운동",
-            ),
-            TodoItem(
-                id = 3,
-                title = "독서",
-                description = "챕터 3까지 읽기",
-                startDate = selectedDate,
-                endDate = selectedDate.addDays(1),
-                category = "개인",
-                isCompleted = true,
-            ),
-        )
-    val previewCounts =
-        buildMap {
-            put(today, 1)
-            put(selectedDate, 3)
-            put(selectedDate.addDays(1), 2)
-        }
+    val todos = listOf(
+        TodoItem(
+            id = 1,
+            title = "Preview project meeting",
+            description = "Review requirements and timeline",
+            startDate = today,
+            endDate = today.addDays(2),
+            category = "Preview",
+        ),
+        TodoItem(
+            id = 2,
+            title = "Exercise",
+            description = "5 km walk",
+            startDate = selectedDate,
+            endDate = selectedDate,
+            category = "Personal",
+        ),
+        TodoItem(
+            id = 3,
+            title = "Reading",
+            description = "Finish chapter 3",
+            startDate = selectedDate,
+            endDate = selectedDate.addDays(1),
+            category = "Personal",
+            isCompleted = true,
+        ),
+    )
 
     MyTodoTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp),
-            ) {
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    Text(
-                        text = "내 일정",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text(
-                        text = "${today.year}년 ${today.month}월",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 2.dp),
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(18.dp),
-                        )
-                        .padding(16.dp),
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        listOf("일", "월", "화", "수", "목", "금", "토").forEachIndexed { idx, label ->
-                            Text(
-                                text = label,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = when (idx) {
-                                    0 -> SundayRed
-                                    6 -> SaturdayBlue
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                },
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    repeat(5) { row ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                        ) {
-                            repeat(7) { col ->
-                                val date = today.addDays(row * 7 + col - 2)
-                                DayCell(
-                                    modifier = Modifier.weight(1f),
-                                    dayNum = date.day,
-                                    col = col,
-                                    isToday = date == today,
-                                    isSelected = date == selectedDate,
-                                    isInRange = date >= today && date <= today.addDays(2),
-                                    roundLeft = date == today,
-                                    roundRight = date == today.addDays(2),
-                                    count = previewCounts[date] ?: 0,
-                                    isOverflow = false,
-                                    onClick = {},
-                                )
-                            }
-                        }
-                    }
-                }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 4.dp),
-                ) {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        contentPadding = PaddingValues(vertical = 16.dp),
-                    ) {
-                        items(todos, key = { it.id }) { todo ->
-                            ScheduleListItem(
-                                todo = todo,
-                                today = today,
-                                isSelected = todo.id == 2L,
-                                onClick = {},
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        ScheduleContent(
+            today = today,
+            todos = todos,
+            onOpenTodoDetail = {},
+        )
     }
 }

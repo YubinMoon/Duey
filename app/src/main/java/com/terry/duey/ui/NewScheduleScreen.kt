@@ -18,8 +18,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -41,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
@@ -67,8 +70,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -110,6 +117,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     val context = LocalContext.current
     val voiceRecorder = remember { HoldVoiceRecorder() }
     var isRecordingVoice by remember { mutableStateOf(false) }
+    var voiceButtonState by remember { mutableStateOf<VoiceButtonState>(VoiceButtonState.Idle) }
     val voiceLevels = remember { mutableStateListOf<Float>() }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (!granted) viewModel.clearVoiceInputState()
@@ -168,6 +176,107 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
         )
     }
 
+    NewScheduleContent(
+        title = title,
+        onTitleChange = { title = it },
+        description = description,
+        onDescriptionChange = { description = it },
+        category = category,
+        startDate = startDate,
+        endDate = endDate,
+        voiceState = voiceState,
+        isRecordingVoice = isRecordingVoice,
+        voiceButtonState = voiceButtonState,
+        voiceLevels = voiceLevels,
+        onCategoryClick = { showCategorySelect = true },
+        onRangeClick = { showRangePicker = true },
+        onSave = {
+            viewModel.addTodo(
+                TodoItem(
+                    title = title.trim(),
+                    description = description.trim(),
+                    category = category,
+                    startDate = startDate,
+                    endDate = endDate,
+                ),
+            )
+            onSaved()
+        },
+        onVoiceStateChange = { voiceButtonState = it },
+        onVoiceStart = voiceStart@{
+            val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
+            if (!isVoiceButtonEnabled) return@voiceStart false
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) {
+                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                return@voiceStart false
+            }
+
+            voiceLevels.clear()
+            repeat(VOICE_LEVEL_COUNT) {
+                voiceLevels.add(0.08f)
+            }
+            if (!voiceRecorder.start(context)) {
+                isRecordingVoice = false
+                viewModel.clearVoiceInputState()
+                return@voiceStart false
+            }
+            isRecordingVoice = true
+            true
+        },
+        onVoiceSubmit = {
+            isRecordingVoice = false
+            val recording = voiceRecorder.stop()
+            if (recording != null && recording.durationMillis >= MIN_VOICE_RECORD_MILLIS) {
+                viewModel.submitVoiceAudio(recording.file.readBytes(), recording.mimeType)
+            } else {
+                viewModel.clearVoiceInputState()
+            }
+            recording?.file?.delete()
+        },
+        onVoiceCancel = {
+            isRecordingVoice = false
+            voiceRecorder.cancel()
+            viewModel.clearVoiceInputState()
+        },
+    )
+
+    if (voiceState is TodoViewModel.VoiceInputUiState.Error) {
+        AlertDialog(
+            onDismissRequest = viewModel::clearVoiceInputState,
+            confirmButton = { TextButton(onClick = viewModel::clearVoiceInputState) { Text("확인") } },
+            title = { Text("음성 입력 오류") },
+            text = { Text((voiceState as TodoViewModel.VoiceInputUiState.Error).message) },
+        )
+    }
+}
+
+@Composable
+private fun NewScheduleContent(
+    title: String,
+    onTitleChange: (String) -> Unit,
+    description: String,
+    onDescriptionChange: (String) -> Unit,
+    category: String,
+    startDate: AppDate,
+    endDate: AppDate,
+    voiceState: TodoViewModel.VoiceInputUiState,
+    isRecordingVoice: Boolean,
+    voiceButtonState: VoiceButtonState,
+    voiceLevels: List<Float>,
+    onCategoryClick: () -> Unit,
+    onRangeClick: () -> Unit,
+    onSave: () -> Unit,
+    onVoiceStateChange: (VoiceButtonState) -> Unit,
+    onVoiceStart: () -> Boolean,
+    onVoiceSubmit: () -> Unit,
+    onVoiceCancel: () -> Unit,
+) {
+    val scrollState = rememberScrollState()
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -213,7 +322,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                             )
                             OutlinedTextField(
                                 value = title,
-                                onValueChange = { title = it },
+                                onValueChange = onTitleChange,
                                 placeholder = { Text("무엇을 해야 하나요?") },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -232,7 +341,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                             )
                             OutlinedTextField(
                                 value = description,
-                                onValueChange = { description = it },
+                                onValueChange = onDescriptionChange,
                                 placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -255,7 +364,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .clickable { showCategorySelect = true }
+                                    .clickable(onClick = onCategoryClick)
                                     .padding(16.dp),
                             ) {
                                 Row(
@@ -292,7 +401,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .clickable { showRangePicker = true }
+                                    .clickable(onClick = onRangeClick)
                                     .padding(16.dp),
                             ) {
                                 Row(
@@ -324,18 +433,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Button(
-                        onClick = {
-                            viewModel.addTodo(
-                                TodoItem(
-                                    title = title.trim(),
-                                    description = description.trim(),
-                                    category = category,
-                                    startDate = startDate,
-                                    endDate = endDate,
-                                ),
-                            )
-                            onSaved()
-                        },
+                        onClick = onSave,
                         modifier = Modifier.weight(1f).height(56.dp),
                         shape = RoundedCornerShape(100),
                         enabled = title.isNotBlank(),
@@ -346,73 +444,14 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
                     ) {
                         Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
                     }
-                    Box(contentAlignment = Alignment.Center) {
-                        val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (isVoiceButtonEnabled) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                )
-                                .testTag("btn_voice_add_schedule")
-                                .pointerInput(voiceState) {
-                                    detectTapGestures(
-                                        onPress = {
-                                            if (!isVoiceButtonEnabled) return@detectTapGestures
-                                            val hasPermission = ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.RECORD_AUDIO,
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                            if (!hasPermission) {
-                                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                                return@detectTapGestures
-                                            }
-
-                                            voiceLevels.clear()
-                                            repeat(VOICE_LEVEL_COUNT) {
-                                                voiceLevels.add(0.08f)
-                                            }
-                                            if (!voiceRecorder.start(context)) {
-                                                isRecordingVoice = false
-                                                viewModel.clearVoiceInputState()
-                                                return@detectTapGestures
-                                            }
-                                            isRecordingVoice = true
-                                            val released = tryAwaitRelease()
-                                            isRecordingVoice = false
-                                            val recording = if (released) {
-                                                voiceRecorder.stop()
-                                            } else {
-                                                voiceRecorder.cancel()
-                                                null
-                                            }
-                                            if (recording != null && recording.durationMillis >= MIN_VOICE_RECORD_MILLIS) {
-                                                viewModel.submitVoiceAudio(recording.file.readBytes(), recording.mimeType)
-                                            } else {
-                                                viewModel.clearVoiceInputState()
-                                            }
-                                            recording?.file?.delete()
-                                        },
-                                    )
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Default.Mic,
-                                contentDescription = "음성으로 일정 입력",
-                                tint = if (isVoiceButtonEnabled) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            )
-                        }
-                    }
+                    VoiceRecordButton(
+                        voiceState = voiceState,
+                        buttonState = voiceButtonState,
+                        onButtonStateChange = onVoiceStateChange,
+                        onVoiceStart = onVoiceStart,
+                        onVoiceSubmit = onVoiceSubmit,
+                        onVoiceCancel = onVoiceCancel,
+                    )
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -427,19 +466,148 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             VoiceRecordingOverlay(levels = voiceLevels)
         }
     }
+}
 
-    if (voiceState is TodoViewModel.VoiceInputUiState.Error) {
-        AlertDialog(
-            onDismissRequest = viewModel::clearVoiceInputState,
-            confirmButton = { TextButton(onClick = viewModel::clearVoiceInputState) { Text("확인") } },
-            title = { Text("음성 입력 오류") },
-            text = { Text((voiceState as TodoViewModel.VoiceInputUiState.Error).message) },
-        )
+@Composable
+private fun VoiceRecordButton(
+    voiceState: TodoViewModel.VoiceInputUiState,
+    buttonState: VoiceButtonState,
+    onButtonStateChange: (VoiceButtonState) -> Unit,
+    onVoiceStart: () -> Boolean,
+    onVoiceSubmit: () -> Unit,
+    onVoiceCancel: () -> Unit,
+) {
+    val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
+    val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
+    val radiusPx = with(density) { VOICE_BUTTON_RADIUS.toPx() }
+    val cancelThresholdPx = with(density) { VOICE_CANCEL_THRESHOLD.toPx() }
+    val cancelProgress = (buttonState as? VoiceButtonState.CancelPreview)?.progress ?: 0f
+    val cancelCircleSize = VOICE_BUTTON_SIZE + ((VOICE_CANCEL_VISUAL_MAX_SIZE - VOICE_BUTTON_SIZE) * 2 * cancelProgress)
+    val cancelCircleAlpha = 0.12f + (0.5f * cancelProgress)
+    val activeColor = SundayRed
+
+    Box(
+        modifier = Modifier.size(VOICE_BUTTON_SIZE),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (buttonState is VoiceButtonState.CancelPreview) {
+            Box(
+                modifier = Modifier
+                    .requiredSize(cancelCircleSize)
+                    .background(activeColor.copy(alpha = cancelCircleAlpha), CircleShape),
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(VOICE_BUTTON_SIZE)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        buttonState != VoiceButtonState.Idle -> activeColor
+                        isVoiceButtonEnabled -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
+                )
+                .testTag("btn_voice_add_schedule")
+                .pointerInput(voiceState) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val canStart = voiceState !is TodoViewModel.VoiceInputUiState.Processing
+                        if (!canStart || !onVoiceStart()) {
+                            return@awaitEachGesture
+                        }
+
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onButtonStateChange(VoiceButtonState.Recording)
+
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        var canceled = false
+                        var released = false
+
+                        while (!released && !canceled) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: event.changes.firstOrNull()
+
+                            if (change == null || !change.pressed) {
+                                released = true
+                            } else {
+                                val distance = (change.position - center).getDistance()
+                                if (distance >= cancelThresholdPx) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onVoiceCancel()
+                                    onButtonStateChange(VoiceButtonState.Idle)
+                                    canceled = true
+                                } else {
+                                    val progress = ((distance - radiusPx) / (cancelThresholdPx - radiusPx)).coerceIn(0f, 1f)
+                                    if (distance > radiusPx) {
+                                        onButtonStateChange(VoiceButtonState.CancelPreview(progress))
+                                    } else {
+                                        onButtonStateChange(VoiceButtonState.Recording)
+                                    }
+                                }
+                                change.consume()
+                            }
+                        }
+
+                        if (!canceled) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onVoiceSubmit()
+                            onButtonStateChange(VoiceButtonState.Idle)
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            when (buttonState) {
+                VoiceButtonState.Idle -> {
+                    Icon(
+                        Icons.Default.Mic,
+                        contentDescription = null,
+                        tint = if (isVoiceButtonEnabled) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+
+                VoiceButtonState.Recording -> {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .background(MaterialTheme.colorScheme.onError, RoundedCornerShape(3.dp)),
+                    )
+                }
+
+                is VoiceButtonState.CancelPreview -> {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onError,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
+            }
+        }
     }
+}
+
+private sealed interface VoiceButtonState {
+    data object Idle : VoiceButtonState
+
+    data object Recording : VoiceButtonState
+
+    data class CancelPreview(val progress: Float) : VoiceButtonState
 }
 
 private const val VOICE_LEVEL_COUNT = 18
 private const val MIN_VOICE_RECORD_MILLIS = 500L
+private val VOICE_BUTTON_SIZE = 56.dp
+private val VOICE_BUTTON_RADIUS = 28.dp
+private val VOICE_CANCEL_THRESHOLD = 86.dp
+private val VOICE_CANCEL_VISUAL_MAX_SIZE = 86.dp
 
 private data class VoiceRecording(
     val file: File,
@@ -590,7 +758,7 @@ private fun VoiceRecordingOverlay(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 8.dp,
-        shadowElevation = 0.dp,
+        shadowElevation = 8.dp,
     ) {
         Row(
             modifier = Modifier
@@ -1048,153 +1216,25 @@ private fun NewScheduleScreenPreview() {
     val endDate = startDate.addDays(3)
 
     MyTodoTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp),
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "새 일정 만들기",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(Modifier.height(16.dp))
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(18.dp),
-                            )
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                    ) {
-                        Column {
-                            Text(
-                                "제목",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            OutlinedTextField(
-                                value = "중간고사 계획 정리",
-                                onValueChange = {},
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                singleLine = true,
-                            )
-                        }
-                        Column {
-                            Text(
-                                "설명",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            OutlinedTextField(
-                                value = "과목별 남은 분량과 복습 일정을 적어두기",
-                                onValueChange = {},
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                minLines = 2,
-                                maxLines = 5,
-                            )
-                        }
-                        Column {
-                            Text(
-                                "카테고리",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .padding(16.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = "학업",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.List,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                        }
-                        Column {
-                            Text(
-                                "기간",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .padding(16.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = "$startDate ~ $endDate",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Filled.DateRange,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(40.dp))
-                }
-
-                Button(
-                    onClick = {},
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .padding(bottom = 8.dp),
-                    shape = RoundedCornerShape(100),
-                ) {
-                    Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
-                }
-                Spacer(Modifier.height(16.dp))
-            }
-        }
+        NewScheduleContent(
+            title = "Preview schedule",
+            onTitleChange = {},
+            description = "Shared content preview state",
+            onDescriptionChange = {},
+            category = "Preview",
+            startDate = startDate,
+            endDate = endDate,
+            voiceState = TodoViewModel.VoiceInputUiState.Idle,
+            isRecordingVoice = true,
+            voiceButtonState = VoiceButtonState.Recording,
+            voiceLevels = emptyList(),
+            onCategoryClick = {},
+            onRangeClick = {},
+            onSave = {},
+            onVoiceStateChange = {},
+            onVoiceStart = { false },
+            onVoiceSubmit = {},
+            onVoiceCancel = {},
+        )
     }
 }

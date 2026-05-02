@@ -105,65 +105,76 @@ fun MoreScreen(viewModel: TodoViewModel) {
                 onBack = { activeSubScreen = null },
             )
 
-            null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                ) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "설정",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                MaterialTheme.colorScheme.surface,
-                                RoundedCornerShape(18.dp),
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(18.dp),
-                            )
-                            .clip(RoundedCornerShape(18.dp)),
-                    ) {
-                        MenuItem(
-                            title = "전체 일정 보기",
-                            icon = Icons.AutoMirrored.Filled.List,
-                            onClick = { activeSubScreen = SubScreen.AllSchedules },
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            thickness = 0.5.dp,
-                        )
-                        MenuItem(
-                            title = "카테고리 관리",
-                            icon = Icons.Default.Category,
-                            onClick = { activeSubScreen = SubScreen.CategoryManagement },
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            thickness = 0.5.dp,
-                        )
-                        MenuItem(
-                            title = "백업 및 복구",
-                            icon = Icons.Default.Backup,
-                            onClick = { activeSubScreen = SubScreen.BackupRestore },
-                        )
-                    }
-                }
-            }
+            null -> MoreMenuContent(
+                onAllSchedulesClick = { activeSubScreen = SubScreen.AllSchedules },
+                onCategoryManagementClick = { activeSubScreen = SubScreen.CategoryManagement },
+                onBackupRestoreClick = { activeSubScreen = SubScreen.BackupRestore },
+            )
         }
     }
 }
 
 private enum class SubScreen { AllSchedules, CategoryManagement, BackupRestore }
+
+@Composable
+private fun MoreMenuContent(
+    onAllSchedulesClick: () -> Unit,
+    onCategoryManagementClick: () -> Unit,
+    onBackupRestoreClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+    ) {
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = "설정",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    RoundedCornerShape(18.dp),
+                )
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(18.dp),
+                )
+                .clip(RoundedCornerShape(18.dp)),
+        ) {
+            MenuItem(
+                title = "전체 일정 보기",
+                icon = Icons.AutoMirrored.Filled.List,
+                onClick = onAllSchedulesClick,
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                thickness = 0.5.dp,
+            )
+            MenuItem(
+                title = "카테고리 관리",
+                icon = Icons.Default.Category,
+                onClick = onCategoryManagementClick,
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                thickness = 0.5.dp,
+            )
+            MenuItem(
+                title = "백업 및 복구",
+                icon = Icons.Default.Backup,
+                onClick = onBackupRestoreClick,
+            )
+        }
+    }
+}
 
 @Composable
 private fun MenuItem(
@@ -793,58 +804,11 @@ private fun CategoryTodoListDialog(
 private fun MoreScreenPreview() {
     MyTodoTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp),
-            ) {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "설정",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(16.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.surface,
-                            RoundedCornerShape(18.dp),
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(18.dp),
-                        )
-                        .clip(RoundedCornerShape(18.dp)),
-                ) {
-                    MenuItem(
-                        title = "전체 일정 보기",
-                        icon = Icons.AutoMirrored.Filled.List,
-                        onClick = {},
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        thickness = 0.5.dp,
-                    )
-                    MenuItem(
-                        title = "카테고리 관리",
-                        icon = Icons.Default.Category,
-                        onClick = {},
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        thickness = 0.5.dp,
-                    )
-                    MenuItem(
-                        title = "백업 및 복구",
-                        icon = Icons.Default.Backup,
-                        onClick = {},
-                    )
-                }
-            }
+            MoreMenuContent(
+                onAllSchedulesClick = {},
+                onCategoryManagementClick = {},
+                onBackupRestoreClick = {},
+            )
         }
     }
 }
