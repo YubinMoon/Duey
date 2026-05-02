@@ -11,11 +11,16 @@ val SkyLinkBlue = Color(0xFF2997FF)
 
 // Text & Ink
 val NearBlackInk = Color(0xFF1D1D1F)
+val MutedInk80 = Color(0xCC000000)
+val MutedInk48 = Color(0x7A000000)
 
 // Surfaces
 val PureWhite = Color(0xFFFFFFFF)
+val PaperWhite = PureWhite
 val Parchment = Color(0xFFF5F5F7)
 val PearlButton = Color(0xFFFAFAFC)
+val DividerGray = Color(0x0A000000)
+val SoftChipGray = Color(0xA3D2D2D7)
 
 // Tiles (Dark)
 val NearBlackTile1 = Color(0xFF272729)

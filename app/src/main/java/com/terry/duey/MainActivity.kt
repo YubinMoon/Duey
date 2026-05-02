@@ -85,116 +85,116 @@ fun MainScreen() {
                     modifier = Modifier
                         .windowInsetsPadding(NavigationBarDefaults.windowInsets)
                         .height(64.dp),
-                    windowInsets = WindowInsets(0, 0, 0, 0)
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                 ) {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    modifier = Modifier.testTag("tab_homework"),
-                    icon = {
-                        Icon(
-                            imageVector = if (selectedTab == 0) Icons.Filled.Star else Icons.Outlined.Star,
-                            contentDescription = "숙제",
-                            modifier = Modifier.size(22.dp), // Slightly smaller icons to fit reduced height
-                        )
-                    },
-                    label = {
-                        Text(
-                            "숙제",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
-                        )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    ),
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    modifier = Modifier.testTag("tab_schedule"),
-                    icon = {
-                        Icon(
-                            imageVector = if (selectedTab == 1) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
-                            contentDescription = "일정",
-                            modifier = Modifier.size(22.dp),
-                        )
-                    },
-                    label = {
-                        Text(
-                            "일정",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
-                        )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    ),
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    modifier = Modifier.testTag("tab_new"),
-                    icon = {
-                        Icon(
-                            imageVector = if (selectedTab == 2) Icons.Filled.Add else Icons.Outlined.Add,
-                            contentDescription = "새 일정",
-                            modifier = Modifier.size(22.dp),
-                        )
-                    },
-                    label = {
-                        Text(
-                            "새 일정",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Medium,
-                        )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    ),
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    modifier = Modifier.testTag("tab_more"),
-                    icon = {
-                        Icon(
-                            imageVector = if (selectedTab == 3) Icons.Filled.Menu else Icons.Outlined.Menu,
-                            contentDescription = "설정",
-                            modifier = Modifier.size(22.dp),
-                        )
-                    },
-                    label = {
-                        Text(
-                            "설정",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Medium,
-                        )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    ),
-                )
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        modifier = Modifier.testTag("tab_homework"),
+                        icon = {
+                            Icon(
+                                imageVector = if (selectedTab == 0) Icons.Filled.Star else Icons.Outlined.Star,
+                                contentDescription = "숙제",
+                                modifier = Modifier.size(22.dp), // Slightly smaller icons to fit reduced height
+                            )
+                        },
+                        label = {
+                            Text(
+                                "숙제",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        ),
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        modifier = Modifier.testTag("tab_schedule"),
+                        icon = {
+                            Icon(
+                                imageVector = if (selectedTab == 1) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
+                                contentDescription = "일정",
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        label = {
+                            Text(
+                                "일정",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        ),
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        modifier = Modifier.testTag("tab_new"),
+                        icon = {
+                            Icon(
+                                imageVector = if (selectedTab == 2) Icons.Filled.Add else Icons.Outlined.Add,
+                                contentDescription = "새 일정",
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        label = {
+                            Text(
+                                "새 일정",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        ),
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 3,
+                        onClick = { selectedTab = 3 },
+                        modifier = Modifier.testTag("tab_more"),
+                        icon = {
+                            Icon(
+                                imageVector = if (selectedTab == 3) Icons.Filled.Menu else Icons.Outlined.Menu,
+                                contentDescription = "설정",
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        label = {
+                            Text(
+                                "설정",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        ),
+                    )
+                }
             }
-        }
-    },
-) { innerPadding ->
+        },
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .padding(innerPadding)
