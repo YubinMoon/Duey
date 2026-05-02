@@ -1,5 +1,13 @@
 package com.terry.duey.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.media.MediaRecorder
+import android.os.Build
+import android.os.SystemClock
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -11,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,11 +55,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,19 +68,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.provider.MediaStore
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Popup
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
@@ -78,7 +85,12 @@ import com.terry.duey.ui.theme.MyTodoTheme
 import com.terry.duey.ui.theme.SaturdayBlue
 import com.terry.duey.ui.theme.SundayRed
 import com.terry.duey.viewmodel.TodoViewModel
+import kotlinx.coroutines.delay
+import java.io.File
 import java.util.Calendar
+import kotlin.math.PI
+import kotlin.math.log10
+import kotlin.math.sin
 
 @Composable
 fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
@@ -96,18 +108,28 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     val scrollState = rememberScrollState()
     val voiceState by viewModel.voiceInputState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val recordAudioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val uri = result.data?.data
-            val audioBytes = uri?.let { context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes() } }.orEmpty()
-            val mime = uri?.let { context.contentResolver.getType(it) } ?: "audio/mp4"
-            viewModel.submitVoiceAudio(audioBytes, mime)
-        } else {
-            viewModel.clearVoiceInputState()
+    val voiceRecorder = remember { HoldVoiceRecorder() }
+    var isRecordingVoice by remember { mutableStateOf(false) }
+    val voiceLevels = remember { mutableStateListOf<Float>() }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) viewModel.clearVoiceInputState()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceRecorder.cancel()
         }
     }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) recordAudioLauncher.launch(createRecordAudioIntent()) else viewModel.clearVoiceInputState()
+
+    LaunchedEffect(isRecordingVoice) {
+        while (isRecordingVoice) {
+            val level = voiceRecorder.currentLevel()
+            if (voiceLevels.size >= VOICE_LEVEL_COUNT) {
+                voiceLevels.removeAt(0)
+            }
+            voiceLevels.add(level)
+            delay(80)
+        }
     }
 
     LaunchedEffect(voiceState) {
@@ -147,191 +169,262 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
-                .imePadding(),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(scrollState),
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
+                    .imePadding(),
             ) {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "새 일정 만들기",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(16.dp))
-
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(18.dp),
-                        )
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                        .weight(1f)
+                        .verticalScroll(scrollState),
                 ) {
-                    // 제목 입력
-                    Column {
-                        Text(
-                            "제목",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        OutlinedTextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            placeholder = { Text("무엇을 해야 하나요?") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                        )
-                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "새 일정 만들기",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.height(16.dp))
 
-                    // 설명 입력
-                    Column {
-                        Text(
-                            "설명",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        OutlinedTextField(
-                            value = description,
-                            onValueChange = { description = it },
-                            placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            minLines = 1,
-                            maxLines = 5,
-                        )
-                    }
-
-                    // 카테고리 선택
-                    Column {
-                        Text(
-                            "카테고리",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { showCategorySelect = true }
-                                .padding(16.dp),
-                        ) {
-                            Row(
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(18.dp),
+                            )
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        // 제목 입력
+                        Column {
+                            Text(
+                                "제목",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            OutlinedTextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                placeholder = { Text("무엇을 해야 하나요?") },
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                            )
+                        }
+
+                        // 설명 입력
+                        Column {
+                            Text(
+                                "설명",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            OutlinedTextField(
+                                value = description,
+                                onValueChange = { description = it },
+                                placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                minLines = 1,
+                                maxLines = 5,
+                            )
+                        }
+
+                        // 카테고리 선택
+                        Column {
+                            Text(
+                                "카테고리",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .clickable { showCategorySelect = true }
+                                    .padding(16.dp),
                             ) {
-                                Text(
-                                    text = category,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.List,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = category,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.List,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        // 기간 선택
+                        Column {
+                            Text(
+                                "기간",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .clickable { showRangePicker = true }
+                                    .padding(16.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = "$startDate ~ $endDate",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Filled.DateRange,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                             }
                         }
                     }
+                    Spacer(Modifier.height(40.dp))
+                }
 
-                    // 기간 선택
-                    Column {
-                        Text(
-                            "기간",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.addTodo(
+                                TodoItem(
+                                    title = title.trim(),
+                                    description = description.trim(),
+                                    category = category,
+                                    startDate = startDate,
+                                    endDate = endDate,
+                                ),
+                            )
+                            onSaved()
+                        },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(100),
+                        enabled = title.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Box(contentAlignment = Alignment.Center) {
+                        val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { showRangePicker = true }
-                                .padding(16.dp),
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isVoiceButtonEnabled) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                )
+                                .testTag("btn_voice_add_schedule")
+                                .pointerInput(voiceState) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            if (!isVoiceButtonEnabled) return@detectTapGestures
+                                            val hasPermission = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO,
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (!hasPermission) {
+                                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                                return@detectTapGestures
+                                            }
+
+                                            voiceLevels.clear()
+                                            repeat(VOICE_LEVEL_COUNT) {
+                                                voiceLevels.add(0.08f)
+                                            }
+                                            if (!voiceRecorder.start(context)) {
+                                                isRecordingVoice = false
+                                                viewModel.clearVoiceInputState()
+                                                return@detectTapGestures
+                                            }
+                                            isRecordingVoice = true
+                                            val released = tryAwaitRelease()
+                                            isRecordingVoice = false
+                                            val recording = if (released) {
+                                                voiceRecorder.stop()
+                                            } else {
+                                                voiceRecorder.cancel()
+                                                null
+                                            }
+                                            if (recording != null && recording.durationMillis >= MIN_VOICE_RECORD_MILLIS) {
+                                                viewModel.submitVoiceAudio(recording.file.readBytes(), recording.mimeType)
+                                            } else {
+                                                viewModel.clearVoiceInputState()
+                                            }
+                                            recording?.file?.delete()
+                                        },
+                                    )
+                                },
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = "$startDate ~ $endDate",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Icon(
-                                    imageVector = Icons.Filled.DateRange,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = "음성으로 일정 입력",
+                                tint = if (isVoiceButtonEnabled) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
                         }
                     }
                 }
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(16.dp))
             }
+        }
+    }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Button(
-                    onClick = {
-                        viewModel.addTodo(
-                            TodoItem(
-                                title = title.trim(),
-                                description = description.trim(),
-                                category = category,
-                                startDate = startDate,
-                                endDate = endDate,
-                            ),
-                        )
-                        onSaved()
-                    },
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(100),
-                    enabled = title.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) {
-                    Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
-                }
-                FilledIconButton(
-                    onClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                    modifier = Modifier.size(56.dp).testTag("btn_voice_add_schedule"),
-                    enabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing,
-                ) {
-                    Icon(Icons.Default.Mic, contentDescription = "음성으로 일정 입력")
-                }
-            }
-            Spacer(Modifier.height(16.dp))
+    if (isRecordingVoice) {
+        Popup(
+            alignment = Alignment.BottomCenter,
+            offset = IntOffset(0, 152),
+        ) {
+            VoiceRecordingOverlay(levels = voiceLevels)
         }
     }
 
@@ -345,7 +438,199 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     }
 }
 
-private fun createRecordAudioIntent(): Intent = Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+private const val VOICE_LEVEL_COUNT = 18
+private const val MIN_VOICE_RECORD_MILLIS = 500L
+
+private data class VoiceRecording(
+    val file: File,
+    val mimeType: String,
+    val durationMillis: Long,
+)
+
+private class HoldVoiceRecorder {
+    private var recorder: MediaRecorder? = null
+    private var outputFile: File? = null
+    private var startedAtMillis: Long = 0L
+
+    fun start(context: Context): Boolean {
+        cancel()
+        val file = File.createTempFile("duey_voice_", ".m4a", context.cacheDir)
+        val mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+
+        return try {
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            mediaRecorder.setAudioSamplingRate(44_100)
+            mediaRecorder.setAudioEncodingBitRate(96_000)
+            mediaRecorder.setOutputFile(file.absolutePath)
+            mediaRecorder.prepare()
+            mediaRecorder.start()
+            recorder = mediaRecorder
+            outputFile = file
+            startedAtMillis = SystemClock.elapsedRealtime()
+            true
+        } catch (_: RuntimeException) {
+            mediaRecorder.release()
+            file.delete()
+            false
+        }
+    }
+
+    fun currentLevel(): Float {
+        val amplitude = try {
+            recorder?.maxAmplitude ?: 0
+        } catch (_: RuntimeException) {
+            0
+        }
+        if (amplitude <= 0) return 0.05f
+        val decibels = 20f * log10(amplitude / 32767f)
+        return ((decibels + 60f) / 60f).coerceIn(0.05f, 1f)
+    }
+
+    fun stop(): VoiceRecording? {
+        val mediaRecorder = recorder ?: return null
+        val file = outputFile ?: return null
+        val duration = SystemClock.elapsedRealtime() - startedAtMillis
+        recorder = null
+        outputFile = null
+        return try {
+            mediaRecorder.stop()
+            mediaRecorder.release()
+            VoiceRecording(file = file, mimeType = "audio/mp4", durationMillis = duration)
+        } catch (_: RuntimeException) {
+            mediaRecorder.release()
+            file.delete()
+            null
+        }
+    }
+
+    fun cancel() {
+        val mediaRecorder = recorder
+        val file = outputFile
+        recorder = null
+        outputFile = null
+        if (mediaRecorder != null) {
+            try {
+                mediaRecorder.stop()
+            } catch (_: RuntimeException) {
+            }
+            mediaRecorder.release()
+        }
+        file?.delete()
+    }
+}
+
+@Composable
+private fun VoiceRecordingBubble(
+    levels: List<Float>,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .width(216.dp)
+            .height(72.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 6.dp,
+        shadowElevation = 6.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        ) {
+            Text(
+                text = "녹음 중",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.Bold,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(VOICE_LEVEL_COUNT) { index ->
+                    val newestFirstIndex = levels.lastIndex - index
+                    val level = levels.getOrNull(newestFirstIndex)?.coerceIn(0.05f, 1f) ?: 0.05f
+                    Box(
+                        modifier = Modifier
+                            .width(5.dp)
+                            .height((6 + (30 * level)).dp)
+                            .clip(RoundedCornerShape(100))
+                            .background(MaterialTheme.colorScheme.onPrimaryContainer),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceRecordingOverlay(
+    levels: List<Float>,
+    modifier: Modifier = Modifier,
+) {
+    val inputLevel = levels.lastOrNull()?.coerceIn(0.05f, 1f) ?: 0.05f
+    val motionPhase = levels.size * 0.42f
+
+    Surface(
+        modifier = modifier
+            .width(236.dp)
+            .height(48.dp),
+        shape = RoundedCornerShape(980.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 8.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "녹음 중",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                fontWeight = FontWeight.Bold,
+            )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(VOICE_LEVEL_COUNT) { index ->
+                    val bandPosition = index / (VOICE_LEVEL_COUNT - 1f)
+                    val midBandLift = sin(bandPosition * PI).toFloat().coerceAtLeast(0f)
+                    val bandRipple = (sin((index * 1.71f) + motionPhase) + 1f) * 0.5f
+                    val level = (
+                        0.12f +
+                            inputLevel * (0.32f + midBandLift * 0.48f) +
+                            bandRipple * 0.18f
+                        ).coerceIn(0.12f, 1f)
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .height((5 + (23 * level)).dp)
+                            .clip(RoundedCornerShape(100))
+                            .background(MaterialTheme.colorScheme.primary),
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun CategoryAddDialog(
