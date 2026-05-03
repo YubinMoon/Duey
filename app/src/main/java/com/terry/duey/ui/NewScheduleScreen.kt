@@ -279,197 +279,194 @@ private fun NewScheduleContent(
     val scrollState = rememberScrollState()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .padding(horizontal = 20.dp),
+        ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp)
-                    .imePadding(),
+                    .weight(1f)
+                    .verticalScroll(scrollState),
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(scrollState),
-                ) {
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "새 일정 만들기",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                MaterialTheme.colorScheme.surface,
-                                RoundedCornerShape(18.dp),
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(18.dp),
-                            )
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                    ) {
-                        // 제목 입력
-                        Column {
-                            Text(
-                                "제목",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            OutlinedTextField(
-                                value = title,
-                                onValueChange = onTitleChange,
-                                placeholder = { Text("무엇을 해야 하나요?") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                singleLine = true,
-                            )
-                        }
-
-                        // 설명 입력
-                        Column {
-                            Text(
-                                "설명",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            OutlinedTextField(
-                                value = description,
-                                onValueChange = onDescriptionChange,
-                                placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                minLines = 1,
-                                maxLines = 5,
-                            )
-                        }
-
-                        // 카테고리 선택
-                        Column {
-                            Text(
-                                "카테고리",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .clickable(onClick = onCategoryClick)
-                                    .padding(16.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = category,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.List,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                        }
-
-                        // 기간 선택
-                        Column {
-                            Text(
-                                "기간",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .clickable(onClick = onRangeClick)
-                                    .padding(16.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = "$startDate ~ $endDate",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Filled.DateRange,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(40.dp))
-                }
-
+                Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        .height(48.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Button(
-                        onClick = onSave,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(100),
-                        enabled = title.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                    ) {
-                        Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
-                    }
-                    VoiceRecordButton(
-                        voiceState = voiceState,
-                        buttonState = voiceButtonState,
-                        onButtonStateChange = onVoiceStateChange,
-                        onVoiceStart = onVoiceStart,
-                        onVoiceSubmit = onVoiceSubmit,
-                        onVoiceCancel = onVoiceCancel,
+                    Text(
+                        text = "새 일정 만들기",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(8.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surface,
+                            RoundedCornerShape(18.dp),
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(18.dp),
+                        )
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    // 제목 입력
+                    Column {
+                        Text(
+                            "제목",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                        )
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = onTitleChange,
+                            placeholder = { Text("무엇을 해야 하나요?") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                        )
+                    }
+
+                    // 설명 입력
+                    Column {
+                        Text(
+                            "설명",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                        )
+                        OutlinedTextField(
+                            value = description,
+                            onValueChange = onDescriptionChange,
+                            placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            minLines = 1,
+                            maxLines = 5,
+                        )
+                    }
+
+                    // 카테고리 선택
+                    Column {
+                        Text(
+                            "카테고리",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .clickable(onClick = onCategoryClick)
+                                .padding(16.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = category,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.List,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    // 기간 선택
+                    Column {
+                        Text(
+                            "기간",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .clickable(onClick = onRangeClick)
+                                .padding(16.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "$startDate ~ $endDate",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.DateRange,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(40.dp))
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Button(
+                    onClick = onSave,
+                    modifier = Modifier
+                        .width(168.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(100),
+                    enabled = title.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    Text("일정 저장하기", style = MaterialTheme.typography.titleMedium)
+                }
+                VoiceRecordButton(
+                    voiceState = voiceState,
+                    buttonState = voiceButtonState,
+                    onButtonStateChange = onVoiceStateChange,
+                    onVoiceStart = onVoiceStart,
+                    onVoiceSubmit = onVoiceSubmit,
+                    onVoiceCancel = onVoiceCancel,
+                )
             }
         }
     }
@@ -759,11 +756,11 @@ private fun VoiceRecordingOverlay(
                     val bandPosition = index / (VOICE_LEVEL_COUNT - 1f)
                     val midBandLift = sin(bandPosition * PI).toFloat().coerceAtLeast(0f)
                     val bandRipple = (sin((index * 1.71f) + motionPhase) + 1f) * 0.5f
-                    val level = (
-                        0.12f +
-                            inputLevel * (0.32f + midBandLift * 0.48f) +
-                            bandRipple * 0.18f
-                        ).coerceIn(0.12f, 1f)
+                    val level =
+                        (0.12f + inputLevel * (0.32f + midBandLift * 0.48f) + bandRipple * 0.18f).coerceIn(
+                            0.12f,
+                            1f,
+                        )
                     Box(
                         modifier = Modifier
                             .width(4.dp)
@@ -1122,16 +1119,14 @@ internal fun RangeDatePickerDialog(
                                                     if (isO) {
                                                         prevMonthIndex =
                                                             currentYear * 12 + currentMonth
-                                                        currentYear =
-                                                            date.year
+                                                        currentYear = date.year
                                                         currentMonth = date.month
                                                     }
                                                     if (tempStart == null || (tempStart != null && tempEnd != null)) {
                                                         tempStart = date
                                                         tempEnd = null
                                                     } else if (date < tempStart!!) {
-                                                        tempStart =
-                                                            date
+                                                        tempStart = date
                                                     } else {
                                                         tempEnd = date
                                                     }
