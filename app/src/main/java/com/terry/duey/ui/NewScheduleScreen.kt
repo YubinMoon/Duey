@@ -279,16 +279,16 @@ private fun NewScheduleContent(
     val scrollState = rememberScrollState()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .imePadding()
-                .padding(horizontal = 20.dp),
+                .imePadding(),
         ) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(scrollState),
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 20.dp),
             ) {
                 Spacer(Modifier.height(8.dp))
                 Row(
@@ -435,13 +435,14 @@ private fun NewScheduleContent(
                         }
                     }
                 }
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(116.dp))
             }
 
             Row(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = 20.dp),
+                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
