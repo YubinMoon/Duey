@@ -21,6 +21,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -51,6 +54,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +74,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -314,128 +320,55 @@ private fun NewScheduleContent(
                             MaterialTheme.colorScheme.surface,
                             RoundedCornerShape(18.dp),
                         )
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(18.dp),
-                        )
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    // 제목 입력
-                    Column {
-                        Text(
-                            "제목",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        OutlinedTextField(
-                            value = title,
-                            onValueChange = onTitleChange,
-                            placeholder = { Text("무엇을 해야 하나요?") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                        )
-                    }
+                    BaselineTextInput(
+                        label = "제목",
+                        value = title,
+                        onValueChange = onTitleChange,
+                        placeholder = "무엇을 해야 하나요?",
+                        singleLine = true,
+                    )
 
-                    // 설명 입력
-                    Column {
-                        Text(
-                            "설명",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        OutlinedTextField(
-                            value = description,
-                            onValueChange = onDescriptionChange,
-                            placeholder = { Text("상세한 내용을 적어주세요 (선택)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            minLines = 1,
-                            maxLines = 5,
-                        )
-                    }
+                    BaselineSelectRow(
+                        label = "기간",
+                        value = "$startDate ~ $endDate",
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.DateRange,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                        onClick = onRangeClick,
+                    )
 
-                    // 카테고리 선택
-                    Column {
-                        Text(
-                            "카테고리",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable(onClick = onCategoryClick)
-                                .padding(16.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = category,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.List,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
+                    BaselineSelectRow(
+                        label = "카테고리",
+                        value = category,
+                        icon = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.List,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                        onClick = onCategoryClick,
+                    )
 
-                    // 기간 선택
-                    Column {
-                        Text(
-                            "기간",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable(onClick = onRangeClick)
-                                .padding(16.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = "$startDate ~ $endDate",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Icon(
-                                    imageVector = Icons.Filled.DateRange,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
+                    BaselineTextInput(
+                        label = "설명",
+                        value = description,
+                        onValueChange = onDescriptionChange,
+                        placeholder = "상세한 내용을 적어주세요 (선택)",
+                        minLines = 1,
+                        maxLines = 5,
+                    )
                 }
-                Spacer(Modifier.height(116.dp))
+                Spacer(Modifier.height(86.dp))
             }
 
             Row(
@@ -483,6 +416,118 @@ private fun NewScheduleContent(
 }
 
 @Composable
+private fun BaselineTextInput(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = false,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val baselineColor = if (isFocused) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+    }
+    val baselineThickness = if (isFocused) 2.dp else 1.dp
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { isFocused = it.isFocused },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            singleLine = singleLine,
+            minLines = minLines,
+            maxLines = maxLines,
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, end = 4.dp, bottom = 10.dp),
+                ) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+        HorizontalDivider(thickness = baselineThickness, color = baselineColor)
+    }
+}
+
+@Composable
+private fun BaselineSelectRow(
+    label: String,
+    value: String,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val baselineColor = if (isPressed) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+    }
+    val baselineThickness = if (isPressed) 2.dp else 1.dp
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick,
+                )
+                .padding(start = 4.dp, end = 4.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(12.dp))
+            icon()
+        }
+        HorizontalDivider(thickness = baselineThickness, color = baselineColor)
+    }
+}
+
+@Composable
 private fun VoiceRecordButton(
     voiceState: TodoViewModel.VoiceInputUiState,
     buttonState: VoiceButtonState,
@@ -498,7 +543,7 @@ private fun VoiceRecordButton(
     val cancelThresholdPx = with(density) { VOICE_CANCEL_THRESHOLD.toPx() }
     val cancelProgress = (buttonState as? VoiceButtonState.CancelPreview)?.progress ?: 0f
     val cancelCircleSize =
-        VOICE_BUTTON_SIZE + ((VOICE_CANCEL_VISUAL_MAX_SIZE - VOICE_BUTTON_SIZE) * 2 * cancelProgress)
+        VOICE_BUTTON_SIZE + (VOICE_CANCEL_VISUAL_MAX_SIZE * cancelProgress)
     val cancelCircleAlpha = 0.12f + (0.5f * cancelProgress)
     val activeColor = SundayRed
 
