@@ -107,7 +107,6 @@ import kotlin.math.sin
 
 @Composable
 fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
-    val categories by viewModel.categories.collectAsStateWithLifecycle()
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -118,7 +117,6 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
 
     var showRangePicker by remember { mutableStateOf(false) }
     var showCategorySelect by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
     val voiceState by viewModel.voiceInputState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val voiceRecorder = remember { HoldVoiceRecorder() }
@@ -165,9 +163,8 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             onRangeSelected = { start, end ->
                 startDate = start
                 endDate = end
-                showRangePicker = false
             },
-            onDismiss = { showRangePicker = false },
+            onDismiss = { },
         )
     }
 
@@ -177,17 +174,16 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             selectedCategory = category,
             onCategorySelected = {
                 category = it
-                showCategorySelect = false
             },
-            onDismiss = { showCategorySelect = false },
+            onDismiss = { },
         )
     }
 
     NewScheduleContent(
         title = title,
-        onTitleChange = { title = it },
+        onTitleChange = { },
         description = description,
-        onDescriptionChange = { description = it },
+        onDescriptionChange = { },
         category = category,
         startDate = startDate,
         endDate = endDate,
@@ -195,8 +191,8 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
         isRecordingVoice = isRecordingVoice,
         voiceButtonState = voiceButtonState,
         voiceLevels = voiceLevels,
-        onCategoryClick = { showCategorySelect = true },
-        onRangeClick = { showRangePicker = true },
+        onCategoryClick = { },
+        onRangeClick = { },
         onSave = {
             viewModel.addTodo(
                 TodoItem(
@@ -209,7 +205,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             )
             onSaved()
         },
-        onVoiceStateChange = { voiceButtonState = it },
+        onVoiceStateChange = { },
         onVoiceStart = voiceStart@{
             val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
             if (!isVoiceButtonEnabled) return@voiceStart false
@@ -447,7 +443,7 @@ private fun BaselineTextInput(
             onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .onFocusChanged { isFocused = it.isFocused },
+                .onFocusChanged { it.isFocused },
             textStyle = MaterialTheme.typography.bodyLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
             ),
@@ -1085,7 +1081,7 @@ internal fun RangeDatePickerDialog(
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 for (col in 0..6) {
                                     val dayNum = row * 7 + col - firstDay + 1
-                                    val isO = dayNum < 1 || dayNum > daysInM
+                                    val isO = dayNum !in 1..daysInM
                                     val date = when {
                                         dayNum < 1 -> AppDate(
                                             pY,
