@@ -163,8 +163,9 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             onRangeSelected = { start, end ->
                 startDate = start
                 endDate = end
+                showRangePicker = false
             },
-            onDismiss = { },
+            onDismiss = { showRangePicker = false },
         )
     }
 
@@ -174,16 +175,17 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             selectedCategory = category,
             onCategorySelected = {
                 category = it
+                showCategorySelect = false
             },
-            onDismiss = { },
+            onDismiss = { showCategorySelect = false },
         )
     }
 
     NewScheduleContent(
         title = title,
-        onTitleChange = { },
+        onTitleChange = { title = it },
         description = description,
-        onDescriptionChange = { },
+        onDescriptionChange = { description = it },
         category = category,
         startDate = startDate,
         endDate = endDate,
@@ -191,8 +193,8 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
         isRecordingVoice = isRecordingVoice,
         voiceButtonState = voiceButtonState,
         voiceLevels = voiceLevels,
-        onCategoryClick = { },
-        onRangeClick = { },
+        onCategoryClick = { showCategorySelect = true },
+        onRangeClick = { showRangePicker = true },
         onSave = {
             viewModel.addTodo(
                 TodoItem(
@@ -205,7 +207,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             )
             onSaved()
         },
-        onVoiceStateChange = { },
+        onVoiceStateChange = { voiceButtonState = it },
         onVoiceStart = voiceStart@{
             val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
             if (!isVoiceButtonEnabled) return@voiceStart false
