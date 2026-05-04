@@ -16,6 +16,9 @@ interface TodoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTodo(todo: TodoItem)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTodos(todos: List<TodoItem>)
+
     @Update
     suspend fun updateTodo(todo: TodoItem)
 
@@ -24,6 +27,15 @@ interface TodoDao {
 
     @Query("DELETE FROM todos WHERE id IN (:ids)")
     suspend fun deleteTodosByIds(ids: List<Long>)
+
+    @Query("DELETE FROM todos WHERE recurringTemplateId = :templateId AND isCompleted = 0")
+    suspend fun deleteIncompleteTodosByTemplateId(templateId: Long)
+
+    @Query("UPDATE todos SET recurringTemplateId = NULL, recurringOccurrenceDate = NULL WHERE recurringTemplateId = :templateId AND isCompleted = 1")
+    suspend fun detachCompletedTodosByTemplateId(templateId: Long)
+
+    @Query("UPDATE todos SET recurringTemplateId = NULL, recurringOccurrenceDate = NULL WHERE id = :id")
+    suspend fun detachTodo(id: Long)
 
     @Query("UPDATE todos SET isCompleted = NOT isCompleted WHERE id = :id")
     suspend fun toggleCompletion(id: Long)

@@ -1,6 +1,7 @@
 package com.terry.duey.model
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.Calendar
 
@@ -76,7 +77,10 @@ data class AppDate(
     }
 }
 
-@Entity(tableName = "todos")
+@Entity(
+    tableName = "todos",
+    indices = [Index(value = ["recurringTemplateId", "recurringOccurrenceDate"], unique = true)],
+)
 data class TodoItem(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -86,6 +90,8 @@ data class TodoItem(
     val endDate: AppDate,
     val isCompleted: Boolean = false,
     val category: String = "기본",
+    val recurringTemplateId: Long? = null,
+    val recurringOccurrenceDate: AppDate? = null,
 )
 
 @Entity(tableName = "categories")

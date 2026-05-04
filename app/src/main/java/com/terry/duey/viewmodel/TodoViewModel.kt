@@ -10,9 +10,13 @@ import com.terry.duey.ai.ScheduleVoiceParser
 import com.terry.duey.data.AppDatabase
 import com.terry.duey.data.DEFAULT_CATEGORIES
 import com.terry.duey.data.DEFAULT_CATEGORY
+import com.terry.duey.data.normalizedWeeklyDays
 import com.terry.duey.data.sampleTodos
+import com.terry.duey.data.syncRecurringTemplate
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
+import com.terry.duey.model.RecurrenceTypes
+import com.terry.duey.model.RecurringTemplate
 import com.terry.duey.model.TodoItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import com.terry.duey.data.syncRecurringSchedules as syncRecurringSchedulesForDatabase
 
 private data class TodoImportKey(
     val title: String,
@@ -35,8 +40,23 @@ private data class TodoImportKey(
     val isCompleted: Boolean,
 )
 
+private data class RecurringTemplateImportKey(
+    val title: String,
+    val description: String,
+    val category: String,
+    val repeatStartDate: AppDate,
+    val repeatEndDate: AppDate,
+    val repeatType: String,
+    val weeklyDays: String,
+    val monthlyDay: Int,
+    val periodLengthDays: Int,
+)
+
 private val todoListComparator =
     compareBy<TodoItem>({ it.startDate }, { it.endDate }, { it.title }, { it.id })
+
+private val recurringTemplateComparator =
+    compareBy<RecurringTemplate>({ it.repeatStartDate }, { it.title }, { it.id })
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
     sealed interface VoiceInputUiState {
@@ -49,6 +69,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
     private val todoDao = database.todoDao()
     private val categoryDao = database.categoryDao()
+    private val recurringTemplateDao = database.recurringTemplateDao()
     private val isDebugBuild = (application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     private val voiceParser = ScheduleVoiceParser()
     private val _voiceInputState = MutableStateFlow<VoiceInputUiState>(VoiceInputUiState.Idle)
@@ -72,9 +93,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 initialValue = DEFAULT_CATEGORIES,
             )
 
+    val recurringTemplates: StateFlow<List<RecurringTemplate>> =
+        recurringTemplateDao.getAllTemplates()
+            .map { items -> items.sortedWith(recurringTemplateComparator) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
     init {
         viewModelScope.launch {
             ensureDefaultCategories()
+            syncRecurringSchedulesForDatabase(database)
             seedDebugTodosIfEmpty()
         }
     }
@@ -106,7 +137,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateTodo(updatedItem: TodoItem) {
         viewModelScope.launch {
-            todoDao.updateTodo(updatedItem.normalized())
+            todoDao.updateTodo(
+                updatedItem
+                    .normalized()
+                    .copy(recurringTemplateId = null, recurringOccurrenceDate = null),
+            )
         }
     }
 
@@ -130,6 +165,32 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun syncRecurringSchedules() {
+        viewModelScope.launch {
+            syncRecurringSchedulesForDatabase(database)
+        }
+    }
+
+    fun addRecurringTemplate(template: RecurringTemplate) {
+        viewModelScope.launch {
+            database.withTransaction {
+                val normalizedTemplate = template.normalized().copy(id = 0, lastGeneratedUntil = null)
+                val id = recurringTemplateDao.insertTemplate(normalizedTemplate)
+                syncRecurringTemplate(database, normalizedTemplate.copy(id = id))
+            }
+        }
+    }
+
+    fun deleteRecurringTemplate(templateId: Long) {
+        viewModelScope.launch {
+            database.withTransaction {
+                todoDao.detachCompletedTodosByTemplateId(templateId)
+                todoDao.deleteIncompleteTodosByTemplateId(templateId)
+                recurringTemplateDao.deleteTemplate(templateId)
+            }
+        }
+    }
+
     fun addCategory(name: String) {
         val normalizedName = name.trim()
         if (normalizedName.isBlank()) return
@@ -149,6 +210,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             database.withTransaction {
                 categoryDao.updateCategoryName(oldName, normalizedName)
                 todoDao.updateTodoCategory(oldName, normalizedName)
+                recurringTemplateDao.updateTemplateCategory(oldName, normalizedName)
             }
         }
     }
@@ -159,6 +221,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             database.withTransaction {
                 todoDao.resetCategory(name, DEFAULT_CATEGORY)
+                recurringTemplateDao.resetCategory(name, DEFAULT_CATEGORY)
                 categoryDao.deleteCategory(name)
             }
         }
@@ -180,6 +243,36 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                                     put("startDate", todo.startDate.toStorageString())
                                     put("endDate", todo.endDate.toStorageString())
                                     put("isCompleted", todo.isCompleted)
+                                    if (todo.recurringTemplateId != null) {
+                                        put("recurringTemplateId", todo.recurringTemplateId)
+                                    }
+                                    if (todo.recurringOccurrenceDate != null) {
+                                        put("recurringOccurrenceDate", todo.recurringOccurrenceDate.toStorageString())
+                                    }
+                                },
+                            )
+                        }
+                    },
+                )
+                put(
+                    "recurringTemplates",
+                    JSONArray().apply {
+                        recurringTemplates.value.forEach { template ->
+                            put(
+                                JSONObject().apply {
+                                    put("id", template.id)
+                                    put("title", template.title)
+                                    put("description", template.description)
+                                    put("category", template.category)
+                                    put("repeatStartDate", template.repeatStartDate.toStorageString())
+                                    put("repeatEndDate", template.repeatEndDate.toStorageString())
+                                    put("repeatType", template.repeatType)
+                                    put("weeklyDays", template.weeklyDays)
+                                    put("monthlyDay", template.monthlyDay)
+                                    put("periodLengthDays", template.periodLengthDays)
+                                    if (template.lastGeneratedUntil != null) {
+                                        put("lastGeneratedUntil", template.lastGeneratedUntil.toStorageString())
+                                    }
                                 },
                             )
                         }
@@ -193,8 +286,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun importFromJson(jsonString: String): Int = try {
         val root = JSONObject(jsonString)
         val importedCategories = root.optJSONArray("categories")
-        val importedTodos = root.optJSONArray("todos") ?: return 0
+        val importedTemplates = root.optJSONArray("recurringTemplates")
+        val importedTodos = root.optJSONArray("todos")
         val existingKeys = todos.value.mapTo(linkedSetOf(), TodoItem::toImportKey)
+        val templateIdMap = mutableMapOf<Long, Long>()
         var addedCount = 0
 
         database.withTransaction {
@@ -205,15 +300,36 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            for (index in 0 until importedTodos.length()) {
-                val item = importedTodos.getJSONObject(index).toTodoItem().normalized()
-                val key = item.toImportKey()
-                if (existingKeys.add(key)) {
-                    todoDao.insertTodo(item)
-                    addedCount++
+            if (importedTemplates != null) {
+                val existingTemplates = recurringTemplateDao.getTemplatesSnapshot()
+                val existingTemplateIdsByKey =
+                    existingTemplates.associate { template -> template.toImportKey() to template.id }
+
+                for (index in 0 until importedTemplates.length()) {
+                    val source = importedTemplates.getJSONObject(index)
+                    val originalId = source.optLong("id", 0L)
+                    val template = source.toRecurringTemplate().normalized()
+                    val existingId = existingTemplateIdsByKey[template.toImportKey()]
+                    val mappedId = existingId ?: recurringTemplateDao.insertTemplate(template.copy(id = 0))
+                    if (originalId > 0L) {
+                        templateIdMap[originalId] = mappedId
+                    }
+                }
+            }
+
+            if (importedTodos != null) {
+                for (index in 0 until importedTodos.length()) {
+                    val item = importedTodos.getJSONObject(index).toTodoItem(templateIdMap).normalized()
+                    val key = item.toImportKey()
+                    if (existingKeys.add(key)) {
+                        todoDao.insertTodo(item)
+                        addedCount++
+                    }
                 }
             }
         }
+
+        syncRecurringSchedulesForDatabase(database)
 
         addedCount
     } catch (_: Exception) {
@@ -246,13 +362,36 @@ private fun sortCategories(categories: List<String>): List<String> {
     )
 }
 
-private fun JSONObject.toTodoItem(): TodoItem = TodoItem(
+private fun JSONObject.toTodoItem(templateIdMap: Map<Long, Long> = emptyMap()): TodoItem {
+    val importedTemplateId = if (has("recurringTemplateId")) optLong("recurringTemplateId", 0L) else 0L
+    val mappedTemplateId = templateIdMap[importedTemplateId]
+    val occurrenceDate = optString("recurringOccurrenceDate", "")
+
+    return TodoItem(
+        title = getString("title"),
+        description = optString("description", ""),
+        category = optString("category", DEFAULT_CATEGORY),
+        startDate = AppDate.fromStorageString(getString("startDate")),
+        endDate = AppDate.fromStorageString(getString("endDate")),
+        isCompleted = optBoolean("isCompleted", false),
+        recurringTemplateId = mappedTemplateId,
+        recurringOccurrenceDate = occurrenceDate.takeIf(String::isNotBlank)?.let(AppDate::fromStorageString),
+    )
+}
+
+private fun JSONObject.toRecurringTemplate(): RecurringTemplate = RecurringTemplate(
     title = getString("title"),
     description = optString("description", ""),
     category = optString("category", DEFAULT_CATEGORY),
-    startDate = AppDate.fromStorageString(getString("startDate")),
-    endDate = AppDate.fromStorageString(getString("endDate")),
-    isCompleted = optBoolean("isCompleted", false),
+    repeatStartDate = AppDate.fromStorageString(getString("repeatStartDate")),
+    repeatEndDate = AppDate.fromStorageString(getString("repeatEndDate")),
+    repeatType = optString("repeatType", RecurrenceTypes.DAILY),
+    weeklyDays = optString("weeklyDays", ""),
+    monthlyDay = optInt("monthlyDay", 1),
+    periodLengthDays = optInt("periodLengthDays", 1),
+    lastGeneratedUntil = optString("lastGeneratedUntil", "")
+        .takeIf(String::isNotBlank)
+        ?.let(AppDate::fromStorageString),
 )
 
 private fun TodoItem.normalized(): TodoItem = copy(
@@ -261,6 +400,28 @@ private fun TodoItem.normalized(): TodoItem = copy(
     category = category.trim().ifBlank { DEFAULT_CATEGORY },
 )
 
+private fun RecurringTemplate.normalized(): RecurringTemplate {
+    val cleanType = when (repeatType) {
+        RecurrenceTypes.WEEKLY -> RecurrenceTypes.WEEKLY
+        RecurrenceTypes.MONTHLY -> RecurrenceTypes.MONTHLY
+        else -> RecurrenceTypes.DAILY
+    }
+    val cleanStart = repeatStartDate
+    val cleanEnd = maxOf(repeatEndDate, cleanStart)
+
+    return copy(
+        title = title.trim(),
+        description = description.trim(),
+        category = category.trim().ifBlank { DEFAULT_CATEGORY },
+        repeatStartDate = cleanStart,
+        repeatEndDate = cleanEnd,
+        repeatType = cleanType,
+        weeklyDays = normalizedWeeklyDays(),
+        monthlyDay = monthlyDay.coerceIn(1, 31),
+        periodLengthDays = periodLengthDays.coerceAtLeast(1),
+    )
+}
+
 private fun TodoItem.toImportKey(): TodoImportKey = TodoImportKey(
     title = title,
     description = description,
@@ -268,4 +429,16 @@ private fun TodoItem.toImportKey(): TodoImportKey = TodoImportKey(
     startDate = startDate,
     endDate = endDate,
     isCompleted = isCompleted,
+)
+
+private fun RecurringTemplate.toImportKey(): RecurringTemplateImportKey = RecurringTemplateImportKey(
+    title = title,
+    description = description,
+    category = category,
+    repeatStartDate = repeatStartDate,
+    repeatEndDate = repeatEndDate,
+    repeatType = repeatType,
+    weeklyDays = normalizedWeeklyDays(),
+    monthlyDay = monthlyDay,
+    periodLengthDays = periodLengthDays,
 )

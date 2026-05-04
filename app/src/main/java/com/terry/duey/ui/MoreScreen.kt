@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
@@ -47,7 +48,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -76,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
+import com.terry.duey.model.RecurrenceTypes
+import com.terry.duey.model.RecurringTemplate
 import com.terry.duey.model.TodoItem
 import com.terry.duey.ui.theme.MyTodoTheme
 import com.terry.duey.ui.theme.SundayRed
@@ -83,6 +88,7 @@ import com.terry.duey.viewmodel.TodoViewModel
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.Calendar
 
 @Composable
 fun MoreScreen(viewModel: TodoViewModel) {
@@ -100,6 +106,11 @@ fun MoreScreen(viewModel: TodoViewModel) {
                 onBack = { activeSubScreen = null },
             )
 
+            SubScreen.RecurringManagement -> RecurringManagementScreen(
+                viewModel = viewModel,
+                onBack = { activeSubScreen = null },
+            )
+
             SubScreen.BackupRestore -> BackupRestoreScreen(
                 viewModel = viewModel,
                 onBack = { activeSubScreen = null },
@@ -108,18 +119,20 @@ fun MoreScreen(viewModel: TodoViewModel) {
             null -> MoreMenuContent(
                 onAllSchedulesClick = { activeSubScreen = SubScreen.AllSchedules },
                 onCategoryManagementClick = { activeSubScreen = SubScreen.CategoryManagement },
+                onRecurringManagementClick = { activeSubScreen = SubScreen.RecurringManagement },
                 onBackupRestoreClick = { activeSubScreen = SubScreen.BackupRestore },
             )
         }
     }
 }
 
-private enum class SubScreen { AllSchedules, CategoryManagement, BackupRestore }
+private enum class SubScreen { AllSchedules, CategoryManagement, RecurringManagement, BackupRestore }
 
 @Composable
 private fun MoreMenuContent(
     onAllSchedulesClick: () -> Unit,
     onCategoryManagementClick: () -> Unit,
+    onRecurringManagementClick: () -> Unit,
     onBackupRestoreClick: () -> Unit,
 ) {
     Column(
@@ -170,6 +183,15 @@ private fun MoreMenuContent(
                 title = "카테고리 관리",
                 icon = Icons.Default.Category,
                 onClick = onCategoryManagementClick,
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                thickness = 0.5.dp,
+            )
+            MenuItem(
+                title = "반복 일정 관리",
+                icon = Icons.Default.DateRange,
+                onClick = onRecurringManagementClick,
             )
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = 20.dp),
@@ -442,12 +464,358 @@ private fun AllScheduleRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun RecurringManagementScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
+    val templates by viewModel.recurringTemplates.collectAsStateWithLifecycle()
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    BackHandler(onBack = onBack)
+
+    if (showAddDialog) {
+        RecurringTemplateAddDialog(
+            viewModel = viewModel,
+            onDismiss = { showAddDialog = false },
+        )
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("반복 일정 관리") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "뒤로가기",
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "추가")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+    ) { padding ->
+        if (templates.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("등록된 반복 일정이 없습니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(templates, key = { it.id }) { template ->
+                    RecurringTemplateRow(
+                        template = template,
+                        onDelete = { viewModel.deleteRecurringTemplate(template.id) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecurringTemplateRow(
+    template: RecurringTemplate,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clip(RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = template.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "${template.repeatStartDate} ~ ${template.repeatEndDate} · ${template.repeatSummary()}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "${template.category} · ${template.periodLengthDays}일 기간",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = "삭제",
+                modifier = Modifier.size(20.dp),
+                tint = SundayRed,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecurringTemplateAddDialog(
+    viewModel: TodoViewModel,
+    onDismiss: () -> Unit,
+) {
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(categories.firstOrNull() ?: "기본") }
+    var repeatStart by remember { mutableStateOf(AppDate.today()) }
+    var repeatEnd by remember { mutableStateOf(AppDate.today().addDays(30)) }
+    var repeatType by remember { mutableStateOf(RecurrenceTypes.DAILY) }
+    var weeklyDays by remember { mutableStateOf(setOf(Calendar.MONDAY)) }
+    var monthlyDay by remember { mutableStateOf(AppDate.today().day.toString()) }
+    var periodLengthDays by remember { mutableStateOf("1") }
+    var showRangePicker by remember { mutableStateOf(false) }
+    var showCategorySelect by remember { mutableStateOf(false) }
+
+    if (showRangePicker) {
+        RangeDatePickerDialog(
+            initialStart = repeatStart,
+            initialEnd = repeatEnd,
+            onRangeSelected = { start, end ->
+                repeatStart = start
+                repeatEnd = end
+                showRangePicker = false
+            },
+            onDismiss = { showRangePicker = false },
+        )
+    }
+
+    if (showCategorySelect) {
+        CategorySelectionDialog(
+            viewModel = viewModel,
+            selectedCategory = category,
+            onCategorySelected = {
+                category = it
+                showCategorySelect = false
+            },
+            onDismiss = { showCategorySelect = false },
+        )
+    }
+
+    val cleanPeriodLength = periodLengthDays.toIntOrNull()?.coerceAtLeast(1) ?: 1
+    val cleanMonthlyDay = monthlyDay.toIntOrNull()?.coerceIn(1, 31) ?: 1
+    val canSave = title.isNotBlank() && (repeatType != RecurrenceTypes.WEEKLY || weeklyDays.isNotEmpty())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("반복 일정 추가") },
+        text = {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 560.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("제목") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("설명") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 1,
+                    )
+                }
+                item {
+                    OutlinedButton(
+                        onClick = { showCategorySelect = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("카테고리: $category") }
+                }
+                item {
+                    OutlinedButton(
+                        onClick = { showRangePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("반복 기간: $repeatStart ~ $repeatEnd") }
+                }
+                item {
+                    RecurrenceTypeOption(
+                        selectedType = repeatType,
+                        onSelected = { repeatType = it },
+                    )
+                }
+                if (repeatType == RecurrenceTypes.WEEKLY) {
+                    item {
+                        WeeklyDaySelector(
+                            selectedDays = weeklyDays,
+                            onSelectedDaysChange = { weeklyDays = it },
+                        )
+                    }
+                }
+                if (repeatType == RecurrenceTypes.MONTHLY) {
+                    item {
+                        OutlinedTextField(
+                            value = monthlyDay,
+                            onValueChange = { monthlyDay = it.filter(Char::isDigit).take(2) },
+                            label = { Text("매월 반복 일") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
+                    }
+                }
+                item {
+                    OutlinedTextField(
+                        value = periodLengthDays,
+                        onValueChange = { periodLengthDays = it.filter(Char::isDigit).take(3) },
+                        label = { Text("각 일정 기간 길이(일)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    viewModel.addRecurringTemplate(
+                        RecurringTemplate(
+                            title = title,
+                            description = description,
+                            category = category,
+                            repeatStartDate = repeatStart,
+                            repeatEndDate = repeatEnd,
+                            repeatType = repeatType,
+                            weeklyDays = if (repeatType == RecurrenceTypes.WEEKLY) {
+                                weeklyDays.sorted().joinToString(",")
+                            } else {
+                                ""
+                            },
+                            monthlyDay = cleanMonthlyDay,
+                            periodLengthDays = cleanPeriodLength,
+                        ),
+                    )
+                    onDismiss()
+                },
+                enabled = canSave,
+            ) { Text("저장") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("취소") }
+        },
+    )
+}
+
+@Composable
+private fun RecurrenceTypeOption(
+    selectedType: String,
+    onSelected: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "반복 주기",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        listOf(
+            RecurrenceTypes.DAILY to "매일",
+            RecurrenceTypes.WEEKLY to "매주 특정 요일",
+            RecurrenceTypes.MONTHLY to "매월 특정 일",
+        ).forEach { (type, label) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onSelected(type) }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = selectedType == type, onClick = { onSelected(type) })
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeeklyDaySelector(
+    selectedDays: Set<Int>,
+    onSelectedDaysChange: (Set<Int>) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "요일",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        weeklyDayOptions().forEach { (day, label) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        onSelectedDaysChange(
+                            if (day in selectedDays) {
+                                selectedDays - day
+                            } else {
+                                selectedDays + day
+                            },
+                        )
+                    }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = day in selectedDays,
+                    onCheckedChange = {
+                        onSelectedDaysChange(
+                            if (day in selectedDays) {
+                                selectedDays - day
+                            } else {
+                                selectedDays + day
+                            },
+                        )
+                    },
+                )
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCategory by remember { mutableStateOf<String?>(null) }
     var selectedCategoryForTodos by remember { mutableStateOf<String?>(null) }
 
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+
+    BackHandler(onBack = onBack)
 
     if (showAddDialog) {
         var name by remember { mutableStateOf("") }
@@ -558,6 +926,8 @@ private fun BackupRestoreScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    BackHandler(onBack = onBack)
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -816,6 +1186,28 @@ private fun CategoryTodoListDialog(
     }
 }
 
+private fun RecurringTemplate.repeatSummary(): String = when (repeatType) {
+    RecurrenceTypes.WEEKLY ->
+        "매주 ${
+            weeklyDayOptions()
+                .filter { (day, _) -> weeklyDays.split(",").mapNotNull(String::toIntOrNull).contains(day) }
+                .joinToString(", ") { (_, label) -> label }
+        }"
+
+    RecurrenceTypes.MONTHLY -> "매월 ${monthlyDay}일"
+    else -> "매일"
+}
+
+private fun weeklyDayOptions(): List<Pair<Int, String>> = listOf(
+    Calendar.SUNDAY to "일",
+    Calendar.MONDAY to "월",
+    Calendar.TUESDAY to "화",
+    Calendar.WEDNESDAY to "수",
+    Calendar.THURSDAY to "목",
+    Calendar.FRIDAY to "금",
+    Calendar.SATURDAY to "토",
+)
+
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -825,6 +1217,7 @@ private fun MoreScreenPreview() {
             MoreMenuContent(
                 onAllSchedulesClick = {},
                 onCategoryManagementClick = {},
+                onRecurringManagementClick = {},
                 onBackupRestoreClick = {},
             )
         }
