@@ -63,23 +63,13 @@ fun CategorySelectorRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(end = 4.dp),
         ) {
-            item {
-                FilterChip(
-                    selected = selectedCategoryId == null,
-                    onClick = { onCategorySelected(null) },
-                    label = { Text("선택 안 함") },
-                    shape = RoundedCornerShape(100),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
-                )
-            }
             items(categories, key = { it.id }) { category ->
                 val selected = category.id == selectedCategoryId
                 FilterChip(
                     selected = selected,
-                    onClick = { onCategorySelected(category.id) },
+                    onClick = {
+                        onCategorySelected(if (selected) null else category.id)
+                    },
                     label = { Text(category.name) },
                     shape = RoundedCornerShape(100),
                     colors = FilterChipDefaults.filterChipColors(
