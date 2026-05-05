@@ -318,6 +318,7 @@ private fun NewScheduleContent(
                         value = title,
                         onValueChange = onTitleChange,
                         placeholder = "무엇을 해야 하나요?",
+                        modifier = Modifier.testTag("new_schedule_title"),
                         singleLine = true,
                     )
 
@@ -367,7 +368,8 @@ private fun NewScheduleContent(
                     onClick = onSave,
                     modifier = Modifier
                         .width(168.dp)
-                        .height(48.dp),
+                        .height(48.dp)
+                        .testTag("new_schedule_save"),
                     shape = RoundedCornerShape(100),
                     enabled = title.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(
@@ -418,7 +420,7 @@ private fun BaselineTextInput(
     }
     val baselineThickness = if (isFocused) 2.dp else 1.dp
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -429,7 +431,7 @@ private fun BaselineTextInput(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .onFocusChanged { it.isFocused },
             textStyle = MaterialTheme.typography.bodyLarge.copy(

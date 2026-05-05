@@ -5,8 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.glance.color.ColorProvider as GlanceDayNightColorProvider
 import androidx.glance.color.colorProviders
+import androidx.glance.color.ColorProvider as GlanceDayNightColorProvider
 
 private val DarkColorScheme = darkColorScheme(
     primary = SkyLinkBlue,

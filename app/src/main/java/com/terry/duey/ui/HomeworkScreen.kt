@@ -50,6 +50,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -407,6 +408,7 @@ private fun TodoRow(
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onToggleComplete()
             },
+            modifier = Modifier.testTag("todo_checkbox_${todo.title}"),
             colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
         )
         Spacer(Modifier.width(4.dp))

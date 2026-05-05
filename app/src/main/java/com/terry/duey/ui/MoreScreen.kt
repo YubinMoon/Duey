@@ -1,6 +1,5 @@
 package com.terry.duey.ui
 
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -984,7 +983,7 @@ private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Uni
                             val targetItem = categoryListState.layoutInfo.visibleItemsInfo
                                 .firstOrNull { item ->
                                     item.key != draggedId &&
-                                            draggedMiddle.toInt() in item.offset..(item.offset + item.size)
+                                        draggedMiddle.toInt() in item.offset..(item.offset + item.size)
                                 }
                                 ?: return@detectDragGesturesAfterLongPress
 
@@ -1008,7 +1007,7 @@ private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Uni
                     onDelete = { deletingCategory = cat },
                     onClick = { selectedCategoryForTodos = cat },
                     modifier = Modifier
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 20.dp),
                 )
             }
         }
