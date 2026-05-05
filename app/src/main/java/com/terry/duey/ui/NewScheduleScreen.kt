@@ -92,7 +92,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.terry.duey.data.DEFAULT_CATEGORY_ID
 import com.terry.duey.model.AppDate
+import com.terry.duey.model.Category
 import com.terry.duey.model.TodoItem
 import com.terry.duey.ui.theme.MyTodoTheme
 import com.terry.duey.ui.theme.SaturdayBlue
@@ -107,17 +109,16 @@ import kotlin.math.sin
 
 @Composable
 fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
-
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("기본") }
+    var categoryId by remember { mutableStateOf(DEFAULT_CATEGORY_ID) }
 
     var startDate by remember { mutableStateOf(AppDate.today()) }
     var endDate by remember { mutableStateOf(AppDate.today()) }
 
     var showRangePicker by remember { mutableStateOf(false) }
-    var showCategorySelect by remember { mutableStateOf(false) }
     val voiceState by viewModel.voiceInputState.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val voiceRecorder = remember { HoldVoiceRecorder() }
     var isRecordingVoice by remember { mutableStateOf(false) }
@@ -150,7 +151,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             val draft = (voiceState as TodoViewModel.VoiceInputUiState.DraftReady).draft
             title = draft.title
             description = draft.description
-            category = draft.category
+            categoryId = viewModel.categoryIdForName(draft.category)
             startDate = draft.startDate
             endDate = draft.endDate
         }
@@ -163,49 +164,41 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             onRangeSelected = { start, end ->
                 startDate = start
                 endDate = end
+                showRangePicker = false
             },
-            onDismiss = { },
-        )
-    }
-
-    if (showCategorySelect) {
-        CategorySelectionDialog(
-            viewModel = viewModel,
-            selectedCategory = category,
-            onCategorySelected = {
-                category = it
-            },
-            onDismiss = { },
+            onDismiss = { showRangePicker = false },
         )
     }
 
     NewScheduleContent(
         title = title,
-        onTitleChange = { },
+        onTitleChange = { title = it },
         description = description,
-        onDescriptionChange = { },
-        category = category,
+        onDescriptionChange = { description = it },
+        categories = categories,
+        selectedCategoryId = categoryId,
+        onCategorySelected = { categoryId = it },
+        onCategoryAdded = viewModel::addCategory,
         startDate = startDate,
         endDate = endDate,
         voiceState = voiceState,
         isRecordingVoice = isRecordingVoice,
         voiceButtonState = voiceButtonState,
         voiceLevels = voiceLevels,
-        onCategoryClick = { },
-        onRangeClick = { },
+        onRangeClick = { showRangePicker = true },
         onSave = {
             viewModel.addTodo(
                 TodoItem(
                     title = title.trim(),
                     description = description.trim(),
-                    category = category,
+                    categoryId = categoryId,
                     startDate = startDate,
                     endDate = endDate,
                 ),
             )
             onSaved()
         },
-        onVoiceStateChange = { },
+        onVoiceStateChange = { voiceButtonState = it },
         onVoiceStart = voiceStart@{
             val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
             if (!isVoiceButtonEnabled) return@voiceStart false
@@ -263,14 +256,16 @@ private fun NewScheduleContent(
     onTitleChange: (String) -> Unit,
     description: String,
     onDescriptionChange: (String) -> Unit,
-    category: String,
+    categories: List<com.terry.duey.model.Category>,
+    selectedCategoryId: Long,
+    onCategorySelected: (Long) -> Unit,
+    onCategoryAdded: (String, (com.terry.duey.model.Category) -> Unit) -> Unit,
     startDate: AppDate,
     endDate: AppDate,
     voiceState: TodoViewModel.VoiceInputUiState,
     isRecordingVoice: Boolean,
     voiceButtonState: VoiceButtonState,
     voiceLevels: List<Float>,
-    onCategoryClick: () -> Unit,
     onRangeClick: () -> Unit,
     onSave: () -> Unit,
     onVoiceStateChange: (VoiceButtonState) -> Unit,
@@ -341,18 +336,12 @@ private fun NewScheduleContent(
                         onClick = onRangeClick,
                     )
 
-                    BaselineSelectRow(
+                    CategorySelectorRow(
                         label = "카테고리",
-                        value = category,
-                        icon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.List,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        },
-                        onClick = onCategoryClick,
+                        categories = categories,
+                        selectedCategoryId = selectedCategoryId,
+                        onCategorySelected = onCategorySelected,
+                        onCategoryAdded = onCategoryAdded,
                     )
 
                     BaselineTextInput(
@@ -1240,14 +1229,16 @@ private fun NewScheduleScreenPreview() {
             onTitleChange = {},
             description = "Shared content preview state",
             onDescriptionChange = {},
-            category = "Preview",
+            categories = listOf(Category(id = DEFAULT_CATEGORY_ID, name = "Preview", sortOrder = 0)),
+            selectedCategoryId = DEFAULT_CATEGORY_ID,
+            onCategorySelected = {},
+            onCategoryAdded = { _, _ -> },
             startDate = startDate,
             endDate = endDate,
             voiceState = TodoViewModel.VoiceInputUiState.Idle,
             isRecordingVoice = true,
             voiceButtonState = VoiceButtonState.Recording,
             voiceLevels = emptyList(),
-            onCategoryClick = {},
             onRangeClick = {},
             onSave = {},
             onVoiceStateChange = {},

@@ -1,5 +1,6 @@
 package com.terry.duey.ui
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -22,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,14 +32,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,7 +65,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
@@ -266,7 +261,7 @@ private fun ScheduleContent(
                             ) {
                                 for (col in 0 until 7) {
                                     val dNum = row * 7 + col - firstDay + 1
-                                    val isOverflow = dNum < 1 || dNum > daysInMonth
+                                    val isOverflow = dNum !in 1..daysInMonth
                                     val date = when {
                                         dNum < 1 -> AppDate(pY, pM, pDays + dNum)
                                         dNum > daysInMonth -> AppDate(nY, nM, dNum - daysInMonth)
@@ -538,11 +533,11 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
     var isEditing by remember { mutableStateOf(false) }
     var editTitle by remember { mutableStateOf(todo.title) }
     var editDescription by remember { mutableStateOf(todo.description) }
-    var editCategory by remember { mutableStateOf(todo.category) }
+    var editCategoryId by remember { mutableStateOf(todo.categoryId) }
     var editStart by remember { mutableStateOf(todo.startDate) }
     var editEnd by remember { mutableStateOf(todo.endDate) }
     var showRangePicker by remember { mutableStateOf(false) }
-    var showCategorySelect by remember { mutableStateOf(false) }
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
 
     if (showRangePicker) {
         RangeDatePickerDialog(
@@ -556,18 +551,6 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
             onDismiss = { showRangePicker = false },
         )
     }
-    if (showCategorySelect) {
-        CategorySelectionDialog(
-            viewModel = viewModel,
-            selectedCategory = editCategory,
-            onCategorySelected = {
-                editCategory = it
-                showCategorySelect = false
-            },
-            onDismiss = { showCategorySelect = false },
-        )
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -592,10 +575,13 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 1,
                     )
-                    OutlinedButton(
-                        onClick = { showCategorySelect = true },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("카테고리: $editCategory") }
+                    CategorySelectorRow(
+                        label = "카테고리",
+                        categories = categories,
+                        selectedCategoryId = editCategoryId,
+                        onCategorySelected = { editCategoryId = it },
+                        onCategoryAdded = viewModel::addCategory,
+                    )
                     OutlinedButton(
                         onClick = { showRangePicker = true },
                         modifier = Modifier.fillMaxWidth(),
@@ -606,7 +592,7 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Text(
-                            text = todo.category,
+                            text = viewModel.categoryName(todo.categoryId),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
@@ -685,7 +671,7 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                                 todo.copy(
                                     title = editTitle,
                                     description = editDescription,
-                                    category = editCategory,
+                                    categoryId = editCategoryId,
                                     startDate = editStart,
                                     endDate = editEnd,
                                 ),
@@ -715,112 +701,6 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
         containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(28.dp),
     )
-}
-
-@Composable
-fun CategorySelectionDialog(
-    viewModel: TodoViewModel,
-    selectedCategory: String,
-    onCategorySelected: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var showAddDialog by remember { mutableStateOf(false) }
-
-    if (showAddDialog) {
-        CategoryAddDialog(onCategoryAdded = { newCat ->
-            viewModel.addCategory(newCat)
-            showAddDialog = false
-            onCategorySelected(newCat)
-        }, onDismiss = { showAddDialog = false })
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = "카테고리 선택",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(20.dp))
-
-                val cats by viewModel.categories.collectAsStateWithLifecycle()
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 200.dp), // Reduced height
-                ) {
-                    items(cats) { cat ->
-                        val isSelected = cat == selectedCategory
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) {
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                    } else {
-                                        Color.Transparent
-                                    },
-                                )
-                                .clickable { onCategorySelected(cat) }
-                                .padding(vertical = 12.dp, horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = cat,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider(
-                    thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-
-                TextButton(
-                    onClick = { showAddDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("새 카테고리 추가")
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) {
-                        Text("닫기", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-    }
 }
 
 private fun getFirstDayOfWeek(year: Int, month: Int): Int {
@@ -864,7 +744,7 @@ private fun ScheduleScreenPreview() {
             description = "Review requirements and timeline",
             startDate = today,
             endDate = today.addDays(2),
-            category = "Preview",
+            categoryId = 1L,
         ),
         TodoItem(
             id = 2,
@@ -872,7 +752,7 @@ private fun ScheduleScreenPreview() {
             description = "5 km walk",
             startDate = selectedDate,
             endDate = selectedDate,
-            category = "Personal",
+            categoryId = 1L,
         ),
         TodoItem(
             id = 3,
@@ -880,7 +760,7 @@ private fun ScheduleScreenPreview() {
             description = "Finish chapter 3",
             startDate = selectedDate,
             endDate = selectedDate.addDays(1),
-            category = "Personal",
+            categoryId = 1L,
             isCompleted = true,
         ),
     )

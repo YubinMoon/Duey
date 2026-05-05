@@ -1,7 +1,9 @@
 package com.terry.duey
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -31,15 +33,21 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.terry.duey.ui.HomeworkScreen
@@ -69,7 +77,32 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val viewModel: TodoViewModel = viewModel()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var selectedTab by remember { mutableIntStateOf(0) }
+    var lastBackPressedAt by remember { mutableLongStateOf(0L) }
+
+    BackHandler {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressedAt <= BACK_EXIT_INTERVAL_MILLIS) {
+            (context as? ComponentActivity)?.finish()
+        } else {
+            lastBackPressedAt = now
+            Toast.makeText(context, "한 번 더 누르면 종료됩니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.syncRecurringSchedules()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -209,3 +242,5 @@ fun MainScreen() {
         }
     }
 }
+
+private const val BACK_EXIT_INTERVAL_MILLIS = 2_000L

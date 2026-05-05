@@ -41,6 +41,7 @@ import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import com.terry.duey.MainActivity
 import com.terry.duey.data.AppDatabase
+import com.terry.duey.data.syncRecurringSchedules
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
 import com.terry.duey.ui.theme.DueyGlanceColorScheme
@@ -58,7 +59,9 @@ class TodoWidget : GlanceAppWidget() {
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val todoDao = AppDatabase.getDatabase(context).todoDao()
+        val database = AppDatabase.getDatabase(context)
+        syncRecurringSchedules(database)
+        val todoDao = database.todoDao()
         val today = AppDate.today()
 
         provideContent {
