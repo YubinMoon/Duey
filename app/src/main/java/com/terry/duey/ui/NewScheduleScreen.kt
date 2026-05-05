@@ -92,7 +92,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.terry.duey.data.DEFAULT_CATEGORY_ID
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
 import com.terry.duey.model.TodoItem
@@ -111,7 +110,7 @@ import kotlin.math.sin
 fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var categoryId by remember { mutableStateOf(DEFAULT_CATEGORY_ID) }
+    var categoryId by remember { mutableStateOf<Long?>(null) }
 
     var startDate by remember { mutableStateOf(AppDate.today()) }
     var endDate by remember { mutableStateOf(AppDate.today()) }
@@ -257,8 +256,8 @@ private fun NewScheduleContent(
     description: String,
     onDescriptionChange: (String) -> Unit,
     categories: List<com.terry.duey.model.Category>,
-    selectedCategoryId: Long,
-    onCategorySelected: (Long) -> Unit,
+    selectedCategoryId: Long?,
+    onCategorySelected: (Long?) -> Unit,
     onCategoryAdded: (String, (com.terry.duey.model.Category) -> Unit) -> Unit,
     startDate: AppDate,
     endDate: AppDate,
@@ -1229,8 +1228,8 @@ private fun NewScheduleScreenPreview() {
             onTitleChange = {},
             description = "Shared content preview state",
             onDescriptionChange = {},
-            categories = listOf(Category(id = DEFAULT_CATEGORY_ID, name = "Preview", sortOrder = 0)),
-            selectedCategoryId = DEFAULT_CATEGORY_ID,
+            categories = listOf(Category(id = 1L, name = "Preview", sortOrder = 0)),
+            selectedCategoryId = null,
             onCategorySelected = {},
             onCategoryAdded = { _, _ -> },
             startDate = startDate,

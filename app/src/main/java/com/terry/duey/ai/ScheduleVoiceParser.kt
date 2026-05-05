@@ -97,7 +97,7 @@ class ScheduleVoiceParser {
             ParsedScheduleDraft(
                 title = title,
                 description = json.optString("description", "").trim(),
-                category = json.optString("category", "기본").trim().ifBlank { "기본" },
+                category = json.optString("category", "").trim(),
                 startDate = start,
                 endDate = end,
             )

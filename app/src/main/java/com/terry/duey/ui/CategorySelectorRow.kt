@@ -32,8 +32,8 @@ import com.terry.duey.model.Category
 fun CategorySelectorRow(
     label: String,
     categories: List<Category>,
-    selectedCategoryId: Long,
-    onCategorySelected: (Long) -> Unit,
+    selectedCategoryId: Long?,
+    onCategorySelected: (Long?) -> Unit,
     onCategoryAdded: (String, (Category) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,6 +63,18 @@ fun CategorySelectorRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(end = 4.dp),
         ) {
+            item {
+                FilterChip(
+                    selected = selectedCategoryId == null,
+                    onClick = { onCategorySelected(null) },
+                    label = { Text("선택 안 함") },
+                    shape = RoundedCornerShape(100),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                )
+            }
             items(categories, key = { it.id }) { category ->
                 val selected = category.id == selectedCategoryId
                 FilterChip(

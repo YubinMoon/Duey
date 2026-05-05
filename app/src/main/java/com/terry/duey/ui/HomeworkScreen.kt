@@ -57,7 +57,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.terry.duey.data.DEFAULT_CATEGORY_IDS
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.TodoItem
 import com.terry.duey.ui.theme.MyTodoTheme
@@ -459,7 +458,7 @@ private fun HomeworkScreenPreview() {
             description = "기하와 벡터 12p",
             startDate = today,
             endDate = today,
-            categoryId = DEFAULT_CATEGORY_IDS.getValue("학업"),
+            categoryId = null,
         ),
         TodoItem(
             id = 2,
@@ -467,7 +466,7 @@ private fun HomeworkScreenPreview() {
             description = "VOCA 2000",
             startDate = today,
             endDate = today.addDays(1),
-            categoryId = DEFAULT_CATEGORY_IDS.getValue("학업"),
+            categoryId = null,
         ),
         TodoItem(
             id = 3,
@@ -475,7 +474,7 @@ private fun HomeworkScreenPreview() {
             description = "우유, 사과",
             startDate = today.addDays(1),
             endDate = today.addDays(1),
-            categoryId = DEFAULT_CATEGORY_IDS.getValue("개인"),
+            categoryId = null,
         ),
         TodoItem(
             id = 4,
@@ -483,7 +482,7 @@ private fun HomeworkScreenPreview() {
             description = "조깅 5km",
             startDate = today,
             endDate = today.addDays(3),
-            categoryId = DEFAULT_CATEGORY_IDS.getValue("운동"),
+            categoryId = null,
             isCompleted = true,
         ),
     )

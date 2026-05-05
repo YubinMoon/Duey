@@ -89,7 +89,7 @@ data class TodoItem(
     val startDate: AppDate,
     val endDate: AppDate,
     val isCompleted: Boolean = false,
-    val categoryId: Long = 1L,
+    val categoryId: Long? = null,
     val recurringTemplateId: Long? = null,
     val recurringOccurrenceDate: AppDate? = null,
 )

@@ -592,7 +592,7 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Text(
-                            text = viewModel.categoryName(todo.categoryId),
+                            text = viewModel.categoryName(todo.categoryId).ifBlank { "선택 안 함" },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
@@ -744,7 +744,7 @@ private fun ScheduleScreenPreview() {
             description = "Review requirements and timeline",
             startDate = today,
             endDate = today.addDays(2),
-            categoryId = 1L,
+            categoryId = null,
         ),
         TodoItem(
             id = 2,
@@ -752,7 +752,7 @@ private fun ScheduleScreenPreview() {
             description = "5 km walk",
             startDate = selectedDate,
             endDate = selectedDate,
-            categoryId = 1L,
+            categoryId = null,
         ),
         TodoItem(
             id = 3,
@@ -760,7 +760,7 @@ private fun ScheduleScreenPreview() {
             description = "Finish chapter 3",
             startDate = selectedDate,
             endDate = selectedDate.addDays(1),
-            categoryId = 1L,
+            categoryId = null,
             isCompleted = true,
         ),
     )

@@ -86,7 +86,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.terry.duey.data.DEFAULT_CATEGORY_ID
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
 import com.terry.duey.model.RecurrenceTypes
@@ -373,7 +372,7 @@ private fun AllSchedulesScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
                     }
                     AllScheduleRow(
                         todo = todo,
-                        categoryName = viewModel.categoryName(todo.categoryId),
+                        categoryName = viewModel.categoryName(todo.categoryId).ifBlank { "선택 안 함" },
                         isDeleteMode = isDeleteMode,
                         isSelected = selectedIds.contains(todo.id),
                         onToggleSelection = {
@@ -531,7 +530,7 @@ private fun RecurringManagementScreen(viewModel: TodoViewModel, onBack: () -> Un
                 items(templates, key = { it.id }) { template ->
                     RecurringTemplateRow(
                         template = template,
-                        categoryName = viewModel.categoryName(template.categoryId),
+                        categoryName = viewModel.categoryName(template.categoryId).ifBlank { "선택 안 함" },
                         onDelete = { viewModel.deleteRecurringTemplate(template.id) },
                     )
                 }
@@ -597,11 +596,7 @@ private fun RecurringTemplateAddDialog(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var categoryId by remember {
-        mutableStateOf(
-            categories.firstOrNull()?.id ?: DEFAULT_CATEGORY_ID
-        )
-    }
+    var categoryId by remember { mutableStateOf<Long?>(null) }
     var repeatStart by remember { mutableStateOf(AppDate.today()) }
     var repeatEnd by remember { mutableStateOf(AppDate.today().addDays(30)) }
     var repeatType by remember { mutableStateOf(RecurrenceTypes.DAILY) }
@@ -894,39 +889,18 @@ private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Uni
 
     if (deletingCategory != null) {
         val category = deletingCategory!!
-        var moveTargetId by remember(
-            category.id,
-            categories
-        ) { mutableStateOf(DEFAULT_CATEGORY_ID) }
-        val moveTargets = categories.filter { it.id != category.id }
-
         AlertDialog(
             onDismissRequest = { deletingCategory = null },
             title = { Text("카테고리 삭제") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("'${category.name}' 카테고리의 일정을 이동할 카테고리를 선택하세요.")
-                    moveTargets.forEach { target ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { moveTargetId = target.id }
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = moveTargetId == target.id,
-                                onClick = { moveTargetId = target.id },
-                            )
-                            Text(target.name)
-                        }
-                    }
+                    Text("'${category.name}' 카테고리를 쓰던 일정은 카테고리 없음으로 변경됩니다.")
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.deleteCategory(category.id, moveTargetId)
+                    viewModel.deleteCategory(category.id)
                     deletingCategory = null
                 }) { Text("삭제") }
             },

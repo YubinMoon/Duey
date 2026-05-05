@@ -1,18 +1,13 @@
 package com.terry.duey.viewmodel
 
 import android.app.Application
-import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.terry.duey.ai.ParsedScheduleDraft
 import com.terry.duey.ai.ScheduleVoiceParser
 import com.terry.duey.data.AppDatabase
-import com.terry.duey.data.DEFAULT_CATEGORIES
-import com.terry.duey.data.DEFAULT_CATEGORY
-import com.terry.duey.data.DEFAULT_CATEGORY_ID
 import com.terry.duey.data.normalizedWeeklyDays
-import com.terry.duey.data.sampleTodos
 import com.terry.duey.data.syncRecurringTemplate
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
@@ -23,7 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -74,7 +68,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val todoDao = database.todoDao()
     private val categoryDao = database.categoryDao()
     private val recurringTemplateDao = database.recurringTemplateDao()
-    private val isDebugBuild = (application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     private val voiceParser = ScheduleVoiceParser()
     private val _voiceInputState = MutableStateFlow<VoiceInputUiState>(VoiceInputUiState.Idle)
     val voiceInputState: StateFlow<VoiceInputUiState> = _voiceInputState
@@ -94,7 +87,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = defaultCategoryModels(),
+                initialValue = emptyList(),
             )
 
     val recurringTemplates: StateFlow<List<RecurringTemplate>> =
@@ -107,11 +100,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             )
 
     init {
-        viewModelScope.launch {
-            ensureDefaultCategories()
-            syncRecurringSchedulesForDatabase(database)
-            seedDebugTodosIfEmpty()
-        }
+        syncRecurringSchedules()
     }
 
     fun addTodo(item: TodoItem) {
@@ -195,9 +184,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun categoryName(categoryId: Long): String = categories.value.firstOrNull { it.id == categoryId }?.name ?: DEFAULT_CATEGORY
+    fun categoryName(categoryId: Long?): String = categoryId?.let { id ->
+        categories.value.firstOrNull { it.id == id }?.name
+    }.orEmpty()
 
-    fun categoryIdForName(name: String): Long = categories.value.firstOrNull { it.name == name.trim() }?.id ?: DEFAULT_CATEGORY_ID
+    fun categoryIdForName(name: String): Long? = categories.value.firstOrNull { it.name == name.trim() }?.id
 
     fun addCategory(name: String, onAdded: (Category) -> Unit = {}) {
         val normalizedName = name.trim()
@@ -217,8 +208,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateCategory(categoryId: Long, newName: String) {
         val normalizedName = newName.trim()
-        val current = categories.value.firstOrNull { it.id == categoryId } ?: return
-        if (current.name == DEFAULT_CATEGORY || normalizedName.isBlank()) return
+        if (normalizedName.isBlank()) return
 
         viewModelScope.launch {
             if (categories.value.any { it.id != categoryId && it.name == normalizedName }) return@launch
@@ -227,14 +217,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun deleteCategory(categoryId: Long, moveToCategoryId: Long = DEFAULT_CATEGORY_ID) {
-        val current = categories.value.firstOrNull { it.id == categoryId } ?: return
-        if (current.name == DEFAULT_CATEGORY || categoryId == moveToCategoryId) return
+    fun deleteCategory(categoryId: Long) {
+        if (categories.value.none { it.id == categoryId }) return
 
         viewModelScope.launch {
             database.withTransaction {
-                todoDao.moveTodosToCategory(categoryId, moveToCategoryId)
-                recurringTemplateDao.moveTemplatesToCategory(categoryId, moveToCategoryId)
+                todoDao.clearCategory(categoryId)
+                recurringTemplateDao.clearCategory(categoryId)
                 categoryDao.deleteCategory(categoryId)
             }
         }
@@ -382,28 +371,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     } catch (_: Exception) {
         -1
     }
-
-    private suspend fun ensureDefaultCategories() {
-        if (categoryDao.getAllCategories().first().isNotEmpty()) return
-
-        database.withTransaction {
-            defaultCategoryModels().forEach { category ->
-                categoryDao.insertCategory(category)
-            }
-        }
-    }
-
-    private suspend fun seedDebugTodosIfEmpty() {
-        if (!isDebugBuild || todoDao.getAllTodos().first().isNotEmpty()) return
-
-        sampleTodos(AppDate.today()).forEach { todo ->
-            todoDao.insertTodo(todo)
-        }
-    }
-}
-
-private fun defaultCategoryModels(): List<Category> = DEFAULT_CATEGORIES.mapIndexed { index, name ->
-    Category(id = index + 1L, name = name, sortOrder = index)
 }
 
 private fun JSONObject.toTodoItem(
@@ -417,7 +384,7 @@ private fun JSONObject.toTodoItem(
     return TodoItem(
         title = getString("title"),
         description = optString("description", ""),
-        categoryId = categoryIdsByName[optString("category", DEFAULT_CATEGORY).trim()] ?: DEFAULT_CATEGORY_ID,
+        categoryId = categoryIdsByName[optString("category", "").trim()],
         startDate = AppDate.fromStorageString(getString("startDate")),
         endDate = AppDate.fromStorageString(getString("endDate")),
         isCompleted = optBoolean("isCompleted", false),
@@ -429,7 +396,7 @@ private fun JSONObject.toTodoItem(
 private fun JSONObject.toRecurringTemplate(categoryIdsByName: Map<String, Long> = emptyMap()): RecurringTemplate = RecurringTemplate(
     title = getString("title"),
     description = optString("description", ""),
-    categoryId = categoryIdsByName[optString("category", DEFAULT_CATEGORY).trim()] ?: DEFAULT_CATEGORY_ID,
+    categoryId = categoryIdsByName[optString("category", "").trim()],
     repeatStartDate = AppDate.fromStorageString(getString("repeatStartDate")),
     repeatEndDate = AppDate.fromStorageString(getString("repeatEndDate")),
     repeatType = optString("repeatType", RecurrenceTypes.DAILY),
@@ -467,7 +434,7 @@ private fun RecurringTemplate.normalized(): RecurringTemplate {
     )
 }
 
-private fun TodoItem.toImportKey(categoryNameForId: (Long) -> String): TodoImportKey = TodoImportKey(
+private fun TodoItem.toImportKey(categoryNameForId: (Long?) -> String): TodoImportKey = TodoImportKey(
     title = title,
     description = description,
     categoryName = categoryNameForId(categoryId),
@@ -476,7 +443,7 @@ private fun TodoItem.toImportKey(categoryNameForId: (Long) -> String): TodoImpor
     isCompleted = isCompleted,
 )
 
-private fun RecurringTemplate.toImportKey(categoryNameForId: (Long) -> String): RecurringTemplateImportKey = RecurringTemplateImportKey(
+private fun RecurringTemplate.toImportKey(categoryNameForId: (Long?) -> String): RecurringTemplateImportKey = RecurringTemplateImportKey(
     title = title,
     description = description,
     categoryName = categoryNameForId(categoryId),
