@@ -85,7 +85,7 @@ data class TodoItem(
     val startDate: AppDate,
     val endDate: AppDate,
     val isCompleted: Boolean = false,
-    val category: String = "기본",
+    val category: String = "",
 )
 
 @Entity(tableName = "categories")

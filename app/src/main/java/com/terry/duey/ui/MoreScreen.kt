@@ -426,16 +426,18 @@ private fun AllScheduleRow(
             )
         }
 
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(6.dp),
-        ) {
-            Text(
-                text = todo.category,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (todo.category.isNotBlank()) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(6.dp),
+            ) {
+                Text(
+                    text = todo.category,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -540,13 +542,30 @@ private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Uni
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(categories) { cat ->
-                CategoryItemTile(
-                    category = cat,
-                    onEdit = { editingCategory = cat },
-                    onDelete = { viewModel.deleteCategory(cat) },
-                    onClick = { selectedCategoryForTodos = cat },
-                )
+            if (categories.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "등록된 카테고리가 없습니다.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else {
+                items(categories) { cat ->
+                    CategoryItemTile(
+                        category = cat,
+                        onEdit = { editingCategory = cat },
+                        onDelete = { viewModel.deleteCategory(cat) },
+                        onClick = { selectedCategoryForTodos = cat },
+                    )
+                }
             }
         }
     }
@@ -681,7 +700,6 @@ private fun CategoryItemTile(
     onDelete: () -> Unit,
     onClick: () -> Unit,
 ) {
-    val isDefault = category == "기본"
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -703,24 +721,22 @@ private fun CategoryItemTile(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
-        if (!isDefault) {
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "수정",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "삭제",
-                        modifier = Modifier.size(20.dp),
-                        tint = SundayRed,
-                    )
-                }
+        Row {
+            IconButton(onClick = onEdit) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "수정",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "삭제",
+                    modifier = Modifier.size(20.dp),
+                    tint = SundayRed,
+                )
             }
         }
     }

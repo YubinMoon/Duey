@@ -31,6 +31,6 @@ interface TodoDao {
     @Query("UPDATE todos SET category = :newCategory WHERE category = :oldCategory")
     suspend fun updateTodoCategory(oldCategory: String, newCategory: String)
 
-    @Query("UPDATE todos SET category = :defaultCategory WHERE category = :category")
-    suspend fun resetCategory(category: String, defaultCategory: String)
+    @Query("UPDATE todos SET category = '' WHERE category = :category")
+    suspend fun clearCategory(category: String)
 }

@@ -107,10 +107,9 @@ import kotlin.math.sin
 
 @Composable
 fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
-
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("기본") }
+    var category by remember { mutableStateOf("") }
 
     var startDate by remember { mutableStateOf(AppDate.today()) }
     var endDate by remember { mutableStateOf(AppDate.today()) }
@@ -163,8 +162,9 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             onRangeSelected = { start, end ->
                 startDate = start
                 endDate = end
+                showRangePicker = false
             },
-            onDismiss = { },
+            onDismiss = { showRangePicker = false },
         )
     }
 
@@ -174,16 +174,17 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             selectedCategory = category,
             onCategorySelected = {
                 category = it
+                showCategorySelect = false
             },
-            onDismiss = { },
+            onDismiss = { showCategorySelect = false },
         )
     }
 
     NewScheduleContent(
         title = title,
-        onTitleChange = { },
+        onTitleChange = { title = it },
         description = description,
-        onDescriptionChange = { },
+        onDescriptionChange = { description = it },
         category = category,
         startDate = startDate,
         endDate = endDate,
@@ -191,8 +192,8 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
         isRecordingVoice = isRecordingVoice,
         voiceButtonState = voiceButtonState,
         voiceLevels = voiceLevels,
-        onCategoryClick = { },
-        onRangeClick = { },
+        onCategoryClick = { showCategorySelect = true },
+        onRangeClick = { showRangePicker = true },
         onSave = {
             viewModel.addTodo(
                 TodoItem(
@@ -343,7 +344,7 @@ private fun NewScheduleContent(
 
                     BaselineSelectRow(
                         label = "카테고리",
-                        value = category,
+                        value = category.ifBlank { "선택 안 함" },
                         icon = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.List,

@@ -5,10 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.terry.duey.model.Category
 import com.terry.duey.model.TodoItem
 
-@Database(entities = [TodoItem::class, Category::class], version = 1, exportSchema = false)
+@Database(entities = [TodoItem::class, Category::class], version = 2, exportSchema = false)
 @TypeConverters(DateConverters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
@@ -25,9 +27,17 @@ abstract class AppDatabase : RoomDatabase() {
                         context.applicationContext,
                         AppDatabase::class.java,
                         "todo_database",
-                    ).build()
+                    ).addMigrations(MIGRATION_1_2)
+                    .build()
             instance = database
             database
         }
+
+        private val MIGRATION_1_2 =
+            object : Migration(1, 2) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("DELETE FROM categories")
+                }
+            }
     }
 }

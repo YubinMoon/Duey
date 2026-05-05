@@ -595,22 +595,24 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                     OutlinedButton(
                         onClick = { showCategorySelect = true },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("카테고리: $editCategory") }
+                    ) { Text("카테고리: ${editCategory.ifBlank { "선택 안 함" }}") }
                     OutlinedButton(
                         onClick = { showRangePicker = true },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("기간: $editStart ~ $editEnd") }
                 } else {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(8.dp),
-                    ) {
-                        Text(
-                            text = todo.category,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                    if (todo.category.isNotBlank()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                text = todo.category,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
                     Text(
                         text = todo.description.ifBlank { "설명이 없습니다." },
@@ -759,39 +761,20 @@ fun CategorySelectionDialog(
                         .fillMaxWidth()
                         .heightIn(max = 200.dp), // Reduced height
                 ) {
+                    item {
+                        val isSelected = selectedCategory.isBlank()
+                        CategorySelectionRow(
+                            text = "선택 안 함",
+                            isSelected = isSelected,
+                            onClick = { onCategorySelected("") },
+                        )
+                    }
                     items(cats) { cat ->
-                        val isSelected = cat == selectedCategory
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) {
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                    } else {
-                                        Color.Transparent
-                                    },
-                                )
-                                .clickable { onCategorySelected(cat) }
-                                .padding(vertical = 12.dp, horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = cat,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
+                        CategorySelectionRow(
+                            text = cat,
+                            isSelected = cat == selectedCategory,
+                            onClick = { onCategorySelected(cat) },
+                        )
                     }
                 }
 
@@ -819,6 +802,45 @@ fun CategorySelectionDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CategorySelectionRow(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (isSelected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                } else {
+                    Color.Transparent
+                },
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

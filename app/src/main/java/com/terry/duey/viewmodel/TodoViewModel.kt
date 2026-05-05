@@ -8,8 +8,6 @@ import androidx.room.withTransaction
 import com.terry.duey.ai.ParsedScheduleDraft
 import com.terry.duey.ai.ScheduleVoiceParser
 import com.terry.duey.data.AppDatabase
-import com.terry.duey.data.DEFAULT_CATEGORIES
-import com.terry.duey.data.DEFAULT_CATEGORY
 import com.terry.duey.data.sampleTodos
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
@@ -69,12 +67,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = DEFAULT_CATEGORIES,
+                initialValue = emptyList(),
             )
 
     init {
         viewModelScope.launch {
-            ensureDefaultCategories()
             seedDebugTodosIfEmpty()
         }
     }
@@ -141,7 +138,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateCategory(oldName: String, newName: String) {
         val normalizedName = newName.trim()
-        if (oldName == DEFAULT_CATEGORY || normalizedName.isBlank()) return
+        if (normalizedName.isBlank()) return
 
         viewModelScope.launch {
             if (normalizedName in categories.value) return@launch
@@ -154,11 +151,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteCategory(name: String) {
-        if (name == DEFAULT_CATEGORY) return
-
         viewModelScope.launch {
             database.withTransaction {
-                todoDao.resetCategory(name, DEFAULT_CATEGORY)
+                todoDao.clearCategory(name)
                 categoryDao.deleteCategory(name)
             }
         }
@@ -201,6 +196,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             if (importedCategories != null) {
                 for (index in 0 until importedCategories.length()) {
                     val name = importedCategories.getString(index).trim()
+                    if (name.isBlank()) continue
                     categoryDao.insertCategory(Category(name))
                 }
             }
@@ -220,16 +216,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         -1
     }
 
-    private suspend fun ensureDefaultCategories() {
-        if (categoryDao.getAllCategories().first().isNotEmpty()) return
-
-        database.withTransaction {
-            DEFAULT_CATEGORIES.forEach { category ->
-                categoryDao.insertCategory(Category(category))
-            }
-        }
-    }
-
     private suspend fun seedDebugTodosIfEmpty() {
         if (!isDebugBuild || todoDao.getAllTodos().first().isNotEmpty()) return
 
@@ -239,17 +225,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
-private fun sortCategories(categories: List<String>): List<String> {
-    val defaultOrder = DEFAULT_CATEGORIES.withIndex().associate { it.value to it.index }
-    return categories.sortedWith(
-        compareBy<String>({ defaultOrder[it] ?: Int.MAX_VALUE }, { it }),
-    )
-}
+private fun sortCategories(categories: List<String>): List<String> = categories.sorted()
 
 private fun JSONObject.toTodoItem(): TodoItem = TodoItem(
     title = getString("title"),
     description = optString("description", ""),
-    category = optString("category", DEFAULT_CATEGORY),
+    category = optString("category", ""),
     startDate = AppDate.fromStorageString(getString("startDate")),
     endDate = AppDate.fromStorageString(getString("endDate")),
     isCompleted = optBoolean("isCompleted", false),
@@ -258,7 +239,7 @@ private fun JSONObject.toTodoItem(): TodoItem = TodoItem(
 private fun TodoItem.normalized(): TodoItem = copy(
     title = title.trim(),
     description = description.trim(),
-    category = category.trim().ifBlank { DEFAULT_CATEGORY },
+    category = category.trim(),
 )
 
 private fun TodoItem.toImportKey(): TodoImportKey = TodoImportKey(
