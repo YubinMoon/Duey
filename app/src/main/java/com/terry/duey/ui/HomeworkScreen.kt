@@ -83,7 +83,6 @@ fun HomeworkScreen(viewModel: TodoViewModel) {
         derivedStateOf {
             val dateToTodos = mutableMapOf<AppDate, MutableList<TodoItem>>()
 
-            // Today shows every active todo; future groups show only start/end dates.
             todos.forEach { todo ->
                 fun addTodoForDate(date: AppDate) {
                     if (date in today..maxDate) {
@@ -126,7 +125,7 @@ fun HomeworkScreen(viewModel: TodoViewModel) {
     var selectedTodoId by remember { mutableStateOf<Long?>(null) }
 
     val lazyListState = rememberLazyListState()
-    if (selectedTodoId != null){
+    if (selectedTodoId != null) {
         val currentTodo = remember(selectedTodoId, todos) {
             todos.find { it.id == selectedTodoId }
         }
@@ -377,6 +376,7 @@ private fun DateGroupTile(
             TodoRow(
                 todo = todo,
                 today = today,
+                groupDate = date,
                 onToggleComplete = { onToggleComplete(todo) },
                 onClick = { onTodoClick(todo) },
             )
@@ -388,15 +388,26 @@ private fun DateGroupTile(
 private fun TodoRow(
     todo: TodoItem,
     today: AppDate,
+    groupDate: AppDate,
     onToggleComplete: () -> Unit,
     onClick: () -> Unit = {},
 ) {
     val haptic = LocalHapticFeedback.current
     val remainingDays = today.daysUntil(todo.endDate)
+    val isTodayGroup = groupDate == today
+    val statusText = when {
+        todo.isCompleted -> "완료"
+        isTodayGroup && remainingDays == 0 -> "오늘까지"
+        isTodayGroup -> "D-$remainingDays"
+        groupDate == todo.startDate && groupDate == todo.endDate -> "당일"
+        groupDate == todo.startDate -> "시작"
+        else -> "마감"
+    }
     val statusColor = when {
         todo.isCompleted -> Color(0xFF4CAF50)
-        remainingDays <= 0 -> Color(0xFFE30000) // Red for overdue and due today
-        remainingDays <= 2 -> Color(0xFFFF9500) // Orange for upcoming
+        isTodayGroup && remainingDays == 0 -> Color(0xFFE30000)
+        isTodayGroup && remainingDays <= 2 -> Color(0xFFFF9500)
+        !isTodayGroup && groupDate == todo.endDate -> Color(0xFFFF9500)
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -436,15 +447,7 @@ private fun TodoRow(
         }
         Spacer(Modifier.width(16.dp))
         Text(
-            text = if (todo.isCompleted) {
-                "완료"
-            } else if (remainingDays < 0) {
-                "기한 초과"
-            } else if (remainingDays == 0) {
-                "오늘까지"
-            } else {
-                "D-$remainingDays"
-            },
+            text = statusText,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             color = statusColor,
