@@ -1,7 +1,6 @@
 package com.terry.duey.viewmodel
 
 import android.app.Application
-import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
@@ -10,7 +9,6 @@ import com.terry.duey.ai.ScheduleVoiceParser
 import com.terry.duey.data.AppDatabase
 import com.terry.duey.data.DEFAULT_CATEGORIES
 import com.terry.duey.data.DEFAULT_CATEGORY
-import com.terry.duey.data.sampleTodos
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
 import com.terry.duey.model.TodoItem
@@ -49,7 +47,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
     private val todoDao = database.todoDao()
     private val categoryDao = database.categoryDao()
-    private val isDebugBuild = (application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     private val voiceParser = ScheduleVoiceParser()
     private val _voiceInputState = MutableStateFlow<VoiceInputUiState>(VoiceInputUiState.Idle)
     val voiceInputState: StateFlow<VoiceInputUiState> = _voiceInputState
@@ -75,7 +72,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             ensureDefaultCategories()
-            seedDebugTodosIfEmpty()
         }
     }
 
@@ -227,14 +223,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             DEFAULT_CATEGORIES.forEach { category ->
                 categoryDao.insertCategory(Category(category))
             }
-        }
-    }
-
-    private suspend fun seedDebugTodosIfEmpty() {
-        if (!isDebugBuild || todoDao.getAllTodos().first().isNotEmpty()) return
-
-        sampleTodos(AppDate.today()).forEach { todo ->
-            todoDao.insertTodo(todo)
         }
     }
 }
