@@ -124,11 +124,9 @@ fun HomeworkScreen(viewModel: TodoViewModel) {
     }
 
     var selectedTodoId by remember { mutableStateOf<Long?>(null) }
-    var showDetailDialog by remember { mutableStateOf(false) }
 
     val lazyListState = rememberLazyListState()
-
-    if (showDetailDialog && selectedTodoId != null) {
+    if (selectedTodoId != null){
         val currentTodo = remember(selectedTodoId, todos) {
             todos.find { it.id == selectedTodoId }
         }
@@ -137,10 +135,10 @@ fun HomeworkScreen(viewModel: TodoViewModel) {
                 todo = currentTodo,
                 viewModel = viewModel,
                 today = today,
-                onDismiss = { showDetailDialog = false },
+                onDismiss = { selectedTodoId = null },
             )
         } else {
-            showDetailDialog = false
+            selectedTodoId = null
         }
     }
 
@@ -156,7 +154,6 @@ fun HomeworkScreen(viewModel: TodoViewModel) {
         },
         onTodoClick = {
             selectedTodoId = it.id
-            showDetailDialog = true
         },
         onToggleComplete = {
             viewModel.toggleTodoCompletion(it.id)
