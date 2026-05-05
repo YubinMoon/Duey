@@ -1,6 +1,7 @@
 package com.terry.duey.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -33,6 +34,13 @@ class TodoUiTest {
 
         composeTestRule.onNodeWithTag("tab_homework").performClick()
         composeTestRule.onNodeWithTag("tab_homework").assertIsDisplayed()
+    }
+
+    @Test
+    fun newSchedule_voiceButtonIsDisabledWhenLoggedOut() {
+        composeTestRule.onNodeWithTag("tab_new").performClick()
+
+        composeTestRule.onNodeWithTag("btn_voice_add_schedule").assertIsNotEnabled()
     }
 
     @Test

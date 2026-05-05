@@ -9,7 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Base64
+import java.util.UUID
 
 data class ParsedScheduleDraft(
     val title: String,
@@ -20,78 +20,56 @@ data class ParsedScheduleDraft(
 )
 
 class ScheduleVoiceParser {
-    fun parseAudio(audioBytes: ByteArray, mimeType: String): Result<ParsedScheduleDraft> {
-        if (BuildConfig.GEMINI_API_KEY.isBlank()) {
-            return Result.failure(IllegalStateException("GEMINI_API_KEY가 설정되지 않았습니다."))
+    fun parseAudio(audioBytes: ByteArray, mimeType: String, accessToken: String?): Result<ParsedScheduleDraft> {
+        if (accessToken.isNullOrBlank()) {
+            return Result.failure(IllegalStateException("로그인이 필요합니다."))
+        }
+        if (audioBytes.isEmpty()) {
+            return Result.failure(IllegalStateException("음성 데이터가 비어 있습니다."))
         }
 
         return runCatching {
-            val prompt = "첨부된 한국어 음성에서 일정을 추출하세요."
-            val base64Audio = Base64.getEncoder().encodeToString(audioBytes)
-            val schema = JSONObject(
-                mapOf(
-                    "type" to "object",
-                    "properties" to mapOf(
-                        "title" to mapOf("type" to "string"),
-                        "description" to mapOf("type" to "string"),
-                        "category" to mapOf("type" to "string"),
-                        "start_date" to mapOf("type" to "string", "format" to "date"),
-                        "end_date" to mapOf("type" to "string", "format" to "date"),
-                    ),
-                    "required" to listOf("title", "start_date", "end_date"),
-                    "additionalProperties" to false,
-                ),
-            )
-
-            val body = JSONObject()
-                .put(
-                    "contents",
-                    listOf(
-                        mapOf(
-                            "parts" to listOf(
-                                mapOf("text" to prompt),
-                                mapOf("inline_data" to mapOf("mime_type" to mimeType, "data" to base64Audio)),
-                            ),
-                        ),
-                    ),
-                )
-                .put(
-                    "generationConfig",
-                    JSONObject()
-                        .put("responseMimeType", "application/json")
-                        .put("responseJsonSchema", schema),
-                )
-                .toString()
-
+            val boundary = "DueyBoundary${UUID.randomUUID()}"
             val connection =
-                (URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("x-goog-api-key", BuildConfig.GEMINI_API_KEY)
-                    doOutput = true
-                    connectTimeout = 10_000
-                    readTimeout = 15_000
+                (URL("${BuildConfig.SERVER_BASE_URL.trimEnd('/')}/api/ai/schedule/voice").openConnection() as HttpURLConnection)
+                    .apply {
+                        requestMethod = "POST"
+                        setRequestProperty("Authorization", "Bearer $accessToken")
+                        setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                        doOutput = true
+                        connectTimeout = 10_000
+                        readTimeout = 20_000
+                    }
+
+            connection.outputStream.use { output ->
+                OutputStreamWriter(output).use { writer ->
+                    writer.write("--$boundary\r\n")
+                    writer.write("Content-Disposition: form-data; name=\"mimeType\"\r\n\r\n")
+                    writer.write(mimeType)
+                    writer.write("\r\n")
+                    writer.write("--$boundary\r\n")
+                    writer.write("Content-Disposition: form-data; name=\"audio\"; filename=\"voice.m4a\"\r\n")
+                    writer.write("Content-Type: $mimeType\r\n\r\n")
+                    writer.flush()
+                    output.write(audioBytes)
+                    output.flush()
+                    writer.write("\r\n--$boundary--\r\n")
                 }
+            }
 
-            OutputStreamWriter(connection.outputStream).use { it.write(body) }
-            val responseText = BufferedReader(connection.inputStream.reader()).use { it.readText() }
-            val response = JSONObject(responseText)
-            val text = response
-                .getJSONArray("candidates")
-                .getJSONObject(0)
-                .getJSONObject("content")
-                .getJSONArray("parts")
-                .getJSONObject(0)
-                .getString("text")
-                .trim()
-
-            val json = JSONObject(text)
+            val responseText = if (connection.responseCode in 200..299) {
+                BufferedReader(connection.inputStream.reader()).use { it.readText() }
+            } else {
+                val errorText = connection.errorStream?.reader()?.use { it.readText() }.orEmpty()
+                throw IllegalStateException(errorText.ifBlank { "음성 일정 변환에 실패했습니다." })
+            }
+            val json = JSONObject(responseText)
             val title = json.getString("title").trim()
             require(title.isNotBlank()) { "제목을 추출하지 못했습니다." }
 
             val today = AppDate.today()
-            val start = parseDateOrToday(json.optString("start_date"), today)
-            val endCandidate = parseDateOrToday(json.optString("end_date"), start)
+            val start = parseDateOrToday(json.optString("startDate"), today)
+            val endCandidate = parseDateOrToday(json.optString("endDate"), start)
             val end = if (endCandidate < start) start else endCandidate
 
             ParsedScheduleDraft(

@@ -83,6 +83,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -92,6 +94,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.terry.duey.BuildConfig
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
 import com.terry.duey.model.TodoItem
@@ -117,6 +123,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
 
     var showRangePicker by remember { mutableStateOf(false) }
     val voiceState by viewModel.voiceInputState.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val voiceRecorder = remember { HoldVoiceRecorder() }
@@ -126,6 +133,24 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) viewModel.clearVoiceInputState()
+        }
+    val googleSignInClient = remember {
+        val optionsBuilder = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+        if (BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
+            optionsBuilder.requestIdToken(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+        }
+        GoogleSignIn.getClient(
+            context,
+            optionsBuilder.build(),
+        )
+    }
+    val googleLoginLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val account = runCatching {
+                GoogleSignIn.getSignedInAccountFromIntent(result.data).getResult(ApiException::class.java)
+            }.getOrNull()
+            viewModel.signInWithGoogle(account?.idToken)
         }
 
     DisposableEffect(Unit) {
@@ -181,6 +206,7 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
         startDate = startDate,
         endDate = endDate,
         voiceState = voiceState,
+        isLoggedIn = isLoggedIn,
         isRecordingVoice = isRecordingVoice,
         voiceButtonState = voiceButtonState,
         voiceLevels = voiceLevels,
@@ -198,7 +224,11 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
             onSaved()
         },
         onVoiceStateChange = { voiceButtonState = it },
+        onLoginClick = {
+            googleLoginLauncher.launch(googleSignInClient.signInIntent)
+        },
         onVoiceStart = voiceStart@{
+            if (!isLoggedIn) return@voiceStart false
             val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
             if (!isVoiceButtonEnabled) return@voiceStart false
             val hasPermission = ContextCompat.checkSelfPermission(
@@ -262,12 +292,14 @@ private fun NewScheduleContent(
     startDate: AppDate,
     endDate: AppDate,
     voiceState: TodoViewModel.VoiceInputUiState,
+    isLoggedIn: Boolean,
     isRecordingVoice: Boolean,
     voiceButtonState: VoiceButtonState,
     voiceLevels: List<Float>,
     onRangeClick: () -> Unit,
     onSave: () -> Unit,
     onVoiceStateChange: (VoiceButtonState) -> Unit,
+    onLoginClick: () -> Unit,
     onVoiceStart: () -> Boolean,
     onVoiceSubmit: () -> Unit,
     onVoiceCancel: () -> Unit,
@@ -381,12 +413,21 @@ private fun NewScheduleContent(
                 }
                 VoiceRecordButton(
                     voiceState = voiceState,
+                    isLoggedIn = isLoggedIn,
                     buttonState = voiceButtonState,
                     onButtonStateChange = onVoiceStateChange,
                     onVoiceStart = onVoiceStart,
                     onVoiceSubmit = onVoiceSubmit,
                     onVoiceCancel = onVoiceCancel,
                 )
+                if (!isLoggedIn) {
+                    TextButton(
+                        onClick = onLoginClick,
+                        modifier = Modifier.testTag("btn_google_login"),
+                    ) {
+                        Text("Google 로그인")
+                    }
+                }
             }
         }
     }
@@ -516,6 +557,7 @@ private fun BaselineSelectRow(
 @Composable
 private fun VoiceRecordButton(
     voiceState: TodoViewModel.VoiceInputUiState,
+    isLoggedIn: Boolean,
     buttonState: VoiceButtonState,
     onButtonStateChange: (VoiceButtonState) -> Unit,
     onVoiceStart: () -> Boolean,
@@ -524,7 +566,7 @@ private fun VoiceRecordButton(
 ) {
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-    val isVoiceButtonEnabled = voiceState !is TodoViewModel.VoiceInputUiState.Processing
+    val isVoiceButtonEnabled = isLoggedIn && voiceState !is TodoViewModel.VoiceInputUiState.Processing
     val radiusPx = with(density) { VOICE_BUTTON_RADIUS.toPx() }
     val cancelThresholdPx = with(density) { VOICE_CANCEL_THRESHOLD.toPx() }
     val cancelProgress = (buttonState as? VoiceButtonState.CancelPreview)?.progress ?: 0f
@@ -557,10 +599,15 @@ private fun VoiceRecordButton(
                     },
                 )
                 .testTag("btn_voice_add_schedule")
-                .pointerInput(voiceState) {
+                .semantics {
+                    if (!isVoiceButtonEnabled) {
+                        disabled()
+                    }
+                }
+                .pointerInput(voiceState, isLoggedIn) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        val canStart = voiceState !is TodoViewModel.VoiceInputUiState.Processing
+                        val canStart = isLoggedIn && voiceState !is TodoViewModel.VoiceInputUiState.Processing
                         if (!canStart || !onVoiceStart()) {
                             return@awaitEachGesture
                         }
@@ -1237,12 +1284,14 @@ private fun NewScheduleScreenPreview() {
             startDate = startDate,
             endDate = endDate,
             voiceState = TodoViewModel.VoiceInputUiState.Idle,
+            isLoggedIn = true,
             isRecordingVoice = true,
             voiceButtonState = VoiceButtonState.Recording,
             voiceLevels = emptyList(),
             onRangeClick = {},
             onSave = {},
             onVoiceStateChange = {},
+            onLoginClick = {},
             onVoiceStart = { false },
             onVoiceSubmit = {},
             onVoiceCancel = {},

@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:file:duey_test?mode=memory&cache=shared
+  sql:
+    init:
+      mode: always
+
+duey:
+  auth:
+    google-client-id: test-google-client
+    jwt-secret: test-secret-test-secret-test-secret-test-secret
+    access-token-minutes: 30
+    refresh-token-days: 30
+  ai:
+    provider: mock
+    gemini-api-key: test-key

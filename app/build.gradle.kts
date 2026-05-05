@@ -16,8 +16,10 @@ android {
         versionName = "V1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        val geminiApiKey = (project.findProperty("GEMINI_API_KEY") as String?) ?: ""
-        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        val serverBaseUrl = (project.findProperty("SERVER_BASE_URL") as String?) ?: "http://10.0.2.2:8080"
+        val googleWebClientId = (project.findProperty("GOOGLE_WEB_CLIENT_ID") as String?) ?: ""
+        buildConfigField("String", "SERVER_BASE_URL", "\"$serverBaseUrl\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     flavorDimensions += "environment"
@@ -80,6 +82,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation("com.google.android.gms:play-services-auth:21.4.0")
     implementation("org.json:json:20240303")
     
     testImplementation(libs.junit)

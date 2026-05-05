@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.terry.duey.ai.ParsedScheduleDraft
 import com.terry.duey.ai.ScheduleVoiceParser
+import com.terry.duey.auth.AuthApiClient
+import com.terry.duey.auth.AuthSession
 import com.terry.duey.data.AppDatabase
 import com.terry.duey.data.normalizedWeeklyDays
 import com.terry.duey.data.syncRecurringTemplate
@@ -14,6 +16,8 @@ import com.terry.duey.model.Category
 import com.terry.duey.model.RecurrenceTypes
 import com.terry.duey.model.RecurringTemplate
 import com.terry.duey.model.TodoItem
+import com.terry.duey.sync.SyncApiClient
+import com.terry.duey.sync.SyncPayload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,8 +73,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val categoryDao = database.categoryDao()
     private val recurringTemplateDao = database.recurringTemplateDao()
     private val voiceParser = ScheduleVoiceParser()
+    private val authApiClient = AuthApiClient()
+    private val authSession = AuthSession(application)
+    private val syncApiClient = SyncApiClient()
     private val _voiceInputState = MutableStateFlow<VoiceInputUiState>(VoiceInputUiState.Idle)
     val voiceInputState: StateFlow<VoiceInputUiState> = _voiceInputState
+    val isLoggedIn: StateFlow<Boolean> = authSession.isLoggedIn
 
     val todos: StateFlow<List<TodoItem>> =
         todoDao.getAllTodos()
@@ -116,11 +124,96 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
         _voiceInputState.value = VoiceInputUiState.Processing
         viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) { voiceParser.parseAudio(audioBytes, mimeType) }
+            val result = withContext(Dispatchers.IO) {
+                voiceParser.parseAudio(audioBytes, mimeType, authSession.accessToken())
+            }
             _voiceInputState.value = result.fold(
                 onSuccess = { VoiceInputUiState.DraftReady(it) },
                 onFailure = { VoiceInputUiState.Error(it.message ?: "음성 일정 변환에 실패했습니다.") },
             )
+        }
+    }
+
+    fun signInWithGoogle(idToken: String?) {
+        if (idToken.isNullOrBlank()) {
+            _voiceInputState.value = VoiceInputUiState.Error("Google 로그인 토큰을 가져오지 못했습니다.")
+            return
+        }
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { authApiClient.loginWithGoogle(idToken) }
+            result.fold(
+                onSuccess = {
+                    authSession.save(it.accessToken, it.refreshToken)
+                    bootstrapFreshInstallData(it.accessToken)
+                },
+                onFailure = { _voiceInputState.value = VoiceInputUiState.Error(it.message ?: "로그인에 실패했습니다.") },
+            )
+        }
+    }
+
+    private suspend fun bootstrapFreshInstallData(accessToken: String) {
+        if (todos.value.isNotEmpty() || categories.value.isNotEmpty() || recurringTemplates.value.isNotEmpty()) return
+
+        val payload = withContext(Dispatchers.IO) {
+            syncApiClient.bootstrap(accessToken).getOrNull()
+        } ?: return
+
+        importBootstrapPayload(payload)
+    }
+
+    private suspend fun importBootstrapPayload(payload: SyncPayload) {
+        database.withTransaction {
+            val categoryIdByRemoteId = mutableMapOf<String, Long>()
+            payload.categories
+                .filter { it.deletedAt.isBlank() && it.name.isNotBlank() }
+                .forEach { remote ->
+                    val localId = categoryDao.insertCategory(Category(name = remote.name, sortOrder = remote.sortOrder))
+                    if (localId > 0L) {
+                        categoryIdByRemoteId[remote.id] = localId
+                    }
+                }
+
+            val templateIdByRemoteId = mutableMapOf<String, Long>()
+            payload.recurringTemplates
+                .filter { it.deletedAt.isBlank() && it.title.isNotBlank() }
+                .forEach { remote ->
+                    val localId = recurringTemplateDao.insertTemplate(
+                        RecurringTemplate(
+                            title = remote.title,
+                            description = remote.description,
+                            categoryId = categoryIdByRemoteId[remote.categoryId],
+                            repeatStartDate = AppDate.fromStorageString(remote.repeatStartDate),
+                            repeatEndDate = AppDate.fromStorageString(remote.repeatEndDate),
+                            repeatType = remote.repeatType,
+                            weeklyDays = remote.weeklyDays,
+                            monthlyDay = remote.monthlyDay,
+                            periodLengthDays = remote.periodLengthDays,
+                            lastGeneratedUntil = remote.lastGeneratedUntil
+                                .takeIf(String::isNotBlank)
+                                ?.let(AppDate::fromStorageString),
+                        ).normalized(),
+                    )
+                    templateIdByRemoteId[remote.id] = localId
+                }
+
+            payload.todos
+                .filter { it.deletedAt.isBlank() && it.title.isNotBlank() }
+                .forEach { remote ->
+                    todoDao.insertTodo(
+                        TodoItem(
+                            title = remote.title,
+                            description = remote.description,
+                            categoryId = categoryIdByRemoteId[remote.categoryId],
+                            startDate = AppDate.fromStorageString(remote.startDate),
+                            endDate = AppDate.fromStorageString(remote.endDate),
+                            isCompleted = remote.completed,
+                            recurringTemplateId = templateIdByRemoteId[remote.recurringTemplateId],
+                            recurringOccurrenceDate = remote.recurringOccurrenceDate
+                                .takeIf(String::isNotBlank)
+                                ?.let(AppDate::fromStorageString),
+                        ).normalized(),
+                    )
+                }
         }
     }
 

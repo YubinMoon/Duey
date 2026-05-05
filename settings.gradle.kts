@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "myTodo"
 include(":app")
+include(":server")
