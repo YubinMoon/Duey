@@ -34,9 +34,6 @@ interface TodoDao {
     @Query("UPDATE todos SET recurringTemplateId = NULL, recurringOccurrenceDate = NULL WHERE recurringTemplateId = :templateId AND isCompleted = 1")
     suspend fun detachCompletedTodosByTemplateId(templateId: Long)
 
-    @Query("UPDATE todos SET recurringTemplateId = NULL, recurringOccurrenceDate = NULL WHERE id = :id")
-    suspend fun detachTodo(id: Long)
-
     @Query("UPDATE todos SET isCompleted = NOT isCompleted WHERE id = :id")
     suspend fun toggleCompletion(id: Long)
 

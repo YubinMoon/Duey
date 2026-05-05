@@ -27,7 +27,4 @@ interface CategoryDao {
 
     @Query("UPDATE categories SET name = :newName WHERE id = :id")
     suspend fun updateCategoryName(id: Long, newName: String)
-
-    @Query("UPDATE categories SET sortOrder = :sortOrder WHERE id = :id")
-    suspend fun updateSortOrder(id: Long, sortOrder: Int)
 }

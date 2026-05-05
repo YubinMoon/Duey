@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.RecurringTemplate
 import kotlinx.coroutines.flow.Flow
@@ -19,9 +18,6 @@ interface RecurringTemplateDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTemplate(template: RecurringTemplate): Long
-
-    @Update
-    suspend fun updateTemplate(template: RecurringTemplate)
 
     @Query("DELETE FROM recurring_templates WHERE id = :id")
     suspend fun deleteTemplate(id: Long)
