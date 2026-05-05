@@ -1,0 +1,18 @@
+server:
+  address: 0.0.0.0
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: ${DB_URL:jdbc:sqlite:duey_debug.db}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+
+duey:
+  auth:
+    google-client-id: ${GOOGLE_CLIENT_ID:}
+    jwt-secret: ${JWT_SECRET:debug-only-secret-change-before-use-debug-only-secret}
+  ai:
+    provider: ${AI_PROVIDER:gemini}
+    gemini-api-key: ${GEMINI_API_KEY:}

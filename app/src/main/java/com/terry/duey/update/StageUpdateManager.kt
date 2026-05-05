@@ -17,20 +17,20 @@ class StageUpdateManager(
         if (!UpdateConfig.canCheckForUpdates()) return
 
         scope.launch {
-            val updateInfo = updateChecker.fetchUpdateInfo(UpdateConfig.updateCheckUrl).getOrNull() ?: return@launch
+            val updateInfo = updateChecker.fetchUpdateInfo(UpdateConfig.githubReleasesUrl).getOrNull() ?: return@launch
             if (!updateChecker.isUpdateAvailable(activity, updateInfo)) return@launch
 
             withContext(Dispatchers.Main) {
                 AlertDialog.Builder(activity)
-                    .setTitle("새 Stage 업데이트")
-                    .setMessage("버전 ${updateInfo.versionName} 이(가) 있습니다.\n\n${updateInfo.releaseNotes}")
+                    .setTitle("Stage update")
+                    .setMessage("Version ${updateInfo.versionName} is available.\n\n${updateInfo.releaseNotes}")
                     .setCancelable(!updateInfo.forceUpdate)
-                    .setPositiveButton("업데이트") { _, _ ->
+                    .setPositiveButton("Update") { _, _ ->
                         downloadAndInstall(activity, scope, updateInfo)
                     }
                     .apply {
                         if (!updateInfo.forceUpdate) {
-                            setNegativeButton("나중에") { dialog, _ -> dialog.dismiss() }
+                            setNegativeButton("Later") { dialog, _ -> dialog.dismiss() }
                         }
                     }
                     .show()
@@ -42,8 +42,8 @@ class StageUpdateManager(
         scope.launch {
             val loadingDialog = withContext(Dispatchers.Main) {
                 AlertDialog.Builder(activity)
-                    .setTitle("업데이트 다운로드")
-                    .setMessage("APK를 다운로드하는 중입니다...")
+                    .setTitle("Downloading update")
+                    .setMessage("Downloading APK...")
                     .setCancelable(false)
                     .show()
             }
@@ -52,19 +52,19 @@ class StageUpdateManager(
             withContext(Dispatchers.Main) { loadingDialog.dismiss() }
 
             if (apkFile == null) {
-                Toast.makeText(activity, "업데이트 다운로드에 실패했습니다.", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, "Failed to download update.", Toast.LENGTH_LONG).show()
                 return@launch
             }
 
             if (!apkInstaller.canInstallPackages(activity)) {
-                Toast.makeText(activity, "알 수 없는 앱 설치 권한을 허용해 주세요.", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, "Allow installing unknown apps, then try again.", Toast.LENGTH_LONG).show()
                 apkInstaller.openUnknownSourcesSettings(activity)
                 return@launch
             }
 
             val installResult = apkInstaller.installApk(activity, apkFile)
             if (installResult.isFailure) {
-                Toast.makeText(activity, "설치 화면을 열 수 없습니다.", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, "Could not open the install screen.", Toast.LENGTH_LONG).show()
             }
         }
     }

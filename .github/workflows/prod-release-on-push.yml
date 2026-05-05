@@ -1,21 +1,25 @@
-name: Stage APK Release
+name: Prod APK Release
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - stage
+      - master
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release-stage:
+  build-and-release-prod:
     runs-on: ubuntu-latest
     env:
       REPO: ${{ github.repository }}
       ORG_GRADLE_PROJECT_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
-      ORG_GRADLE_PROJECT_STAGE_SERVER_BASE_URL: ${{ vars.STAGE_SERVER_BASE_URL }}
+      ORG_GRADLE_PROJECT_PROD_SERVER_BASE_URL: ${{ vars.PROD_SERVER_BASE_URL }}
+      PROD_KEYSTORE_BASE64: ${{ secrets.PROD_KEYSTORE_BASE64 }}
+      PROD_STORE_PASSWORD: ${{ secrets.PROD_STORE_PASSWORD }}
+      PROD_KEY_ALIAS: ${{ secrets.PROD_KEY_ALIAS }}
+      PROD_KEY_PASSWORD: ${{ secrets.PROD_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,12 +41,12 @@ jobs:
           VERSION_NAME=$(sed -n 's/^val appVersionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)
           IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION_NAME}"
           VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
-          TAG="v${VERSION_NAME}-stage"
+          TAG="v${VERSION_NAME}"
           echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
           echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Check existing stage release
+      - name: Check existing prod release
         id: existing_release
         shell: bash
         env:
@@ -63,28 +67,39 @@ jobs:
             exit 1
           fi
 
-      - name: Build stage APK
-        if: steps.existing_release.outputs.exists != 'true'
-        run: ./gradlew :app:assembleStage
+      - name: Configure prod signing
+        if: steps.existing_release.outputs.exists != 'true' && env.PROD_KEYSTORE_BASE64 != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${PROD_KEYSTORE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/duey-prod.keystore"
+          echo "ORG_GRADLE_PROJECT_PROD_STORE_FILE=${RUNNER_TEMP}/duey-prod.keystore" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_PROD_STORE_PASSWORD=${PROD_STORE_PASSWORD}" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_PROD_KEY_ALIAS=${PROD_KEY_ALIAS}" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_PROD_KEY_PASSWORD=${PROD_KEY_PASSWORD}" >> "$GITHUB_ENV"
 
-      - name: Prepare stage APK asset
+      - name: Build prod APK
+        if: steps.existing_release.outputs.exists != 'true'
+        run: ./gradlew :app:assembleProd
+
+      - name: Prepare prod APK asset
         if: steps.existing_release.outputs.exists != 'true'
         shell: bash
         run: |
           set -euo pipefail
-          cp app/build/outputs/apk/stage/*.apk "duey-stage-${{ steps.app_version.outputs.version_name }}.apk"
+          cp app/build/outputs/apk/prod/*.apk "duey-prod-${{ steps.app_version.outputs.version_name }}.apk"
 
-      - name: Publish GitHub pre-release
+      - name: Publish GitHub release
         if: steps.existing_release.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.app_version.outputs.tag }}
-          name: Duey ${{ steps.app_version.outputs.version_name }} Stage
-          prerelease: true
-          make_latest: false
-          files: duey-stage-${{ steps.app_version.outputs.version_name }}.apk
+          name: Duey ${{ steps.app_version.outputs.version_name }}
+          prerelease: false
+          make_latest: true
+          files: duey-prod-${{ steps.app_version.outputs.version_name }}.apk
           body: |
-            Automated stage release.
+            Automated prod release.
             - versionCode: ${{ steps.app_version.outputs.version_code }}
             - versionName: ${{ steps.app_version.outputs.version_name }}
             - commit: ${{ github.sha }}

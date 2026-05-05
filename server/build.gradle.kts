@@ -33,3 +33,27 @@ tasks.withType<Test> {
     useJUnitPlatform()
     systemProperty("spring.profiles.active", "test")
 }
+
+tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunDebug") {
+    group = "application"
+    description = "Runs the server with the debug Spring profile."
+    mainClass.set("com.terry.duey.DueyServerApplication")
+    classpath = sourceSets["main"].runtimeClasspath
+    systemProperty("spring.profiles.active", "debug")
+}
+
+tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunStage") {
+    group = "application"
+    description = "Runs the server with the stage Spring profile."
+    mainClass.set("com.terry.duey.DueyServerApplication")
+    classpath = sourceSets["main"].runtimeClasspath
+    systemProperty("spring.profiles.active", "stage")
+}
+
+tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunProd") {
+    group = "application"
+    description = "Runs the server with the prod Spring profile."
+    mainClass.set("com.terry.duey.DueyServerApplication")
+    classpath = sourceSets["main"].runtimeClasspath
+    systemProperty("spring.profiles.active", "prod")
+}
