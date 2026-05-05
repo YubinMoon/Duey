@@ -40,9 +40,6 @@ interface TodoDao {
     @Query("UPDATE todos SET isCompleted = NOT isCompleted WHERE id = :id")
     suspend fun toggleCompletion(id: Long)
 
-    @Query("UPDATE todos SET category = :newCategory WHERE category = :oldCategory")
-    suspend fun updateTodoCategory(oldCategory: String, newCategory: String)
-
-    @Query("UPDATE todos SET category = :defaultCategory WHERE category = :category")
-    suspend fun resetCategory(category: String, defaultCategory: String)
+    @Query("UPDATE todos SET categoryId = :newCategoryId WHERE categoryId = :oldCategoryId")
+    suspend fun moveTodosToCategory(oldCategoryId: Long, newCategoryId: Long)
 }

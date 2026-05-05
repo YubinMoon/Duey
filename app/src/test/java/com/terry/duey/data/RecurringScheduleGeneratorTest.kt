@@ -86,7 +86,7 @@ class RecurringScheduleGeneratorTest {
         id = 7,
         title = "Repeat",
         description = "Generated",
-        category = "기본",
+        categoryId = DEFAULT_CATEGORY_ID,
         repeatStartDate = repeatStartDate,
         repeatEndDate = repeatEndDate,
         repeatType = repeatType,

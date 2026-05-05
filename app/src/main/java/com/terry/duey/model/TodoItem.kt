@@ -89,13 +89,18 @@ data class TodoItem(
     val startDate: AppDate,
     val endDate: AppDate,
     val isCompleted: Boolean = false,
-    val category: String = "기본",
+    val categoryId: Long = 1L,
     val recurringTemplateId: Long? = null,
     val recurringOccurrenceDate: AppDate? = null,
 )
 
-@Entity(tableName = "categories")
+@Entity(
+    tableName = "categories",
+    indices = [Index(value = ["name"], unique = true)],
+)
 data class Category(
-    @PrimaryKey
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
     val name: String,
+    val sortOrder: Int,
 )

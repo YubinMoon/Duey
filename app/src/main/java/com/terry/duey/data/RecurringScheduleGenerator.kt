@@ -22,7 +22,7 @@ object RecurringScheduleGenerator {
             TodoItem(
                 title = template.title,
                 description = template.description,
-                category = template.category,
+                categoryId = template.categoryId,
                 startDate = occurrenceDate,
                 endDate = occurrenceDate.addDays(template.periodLengthDays.coerceAtLeast(1) - 1),
                 recurringTemplateId = template.id,

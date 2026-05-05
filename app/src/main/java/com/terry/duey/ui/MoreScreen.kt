@@ -1,11 +1,13 @@
 package com.terry.duey.ui
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,6 +63,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,15 +74,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.terry.duey.data.DEFAULT_CATEGORY_ID
 import com.terry.duey.model.AppDate
+import com.terry.duey.model.Category
 import com.terry.duey.model.RecurrenceTypes
 import com.terry.duey.model.RecurringTemplate
 import com.terry.duey.model.TodoItem
@@ -363,6 +373,7 @@ private fun AllSchedulesScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
                     }
                     AllScheduleRow(
                         todo = todo,
+                        categoryName = viewModel.categoryName(todo.categoryId),
                         isDeleteMode = isDeleteMode,
                         isSelected = selectedIds.contains(todo.id),
                         onToggleSelection = {
@@ -393,6 +404,7 @@ private fun AllSchedulesScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
 @Composable
 private fun AllScheduleRow(
     todo: TodoItem,
+    categoryName: String,
     isDeleteMode: Boolean,
     isSelected: Boolean,
     onToggleSelection: () -> Unit,
@@ -453,7 +465,7 @@ private fun AllScheduleRow(
             shape = RoundedCornerShape(6.dp),
         ) {
             Text(
-                text = todo.category,
+                text = categoryName,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -519,6 +531,7 @@ private fun RecurringManagementScreen(viewModel: TodoViewModel, onBack: () -> Un
                 items(templates, key = { it.id }) { template ->
                     RecurringTemplateRow(
                         template = template,
+                        categoryName = viewModel.categoryName(template.categoryId),
                         onDelete = { viewModel.deleteRecurringTemplate(template.id) },
                     )
                 }
@@ -530,6 +543,7 @@ private fun RecurringManagementScreen(viewModel: TodoViewModel, onBack: () -> Un
 @Composable
 private fun RecurringTemplateRow(
     template: RecurringTemplate,
+    categoryName: String,
     onDelete: () -> Unit,
 ) {
     Row(
@@ -559,7 +573,7 @@ private fun RecurringTemplateRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "${template.category} · ${template.periodLengthDays}일 기간",
+                text = "$categoryName · ${template.periodLengthDays}일 기간",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -583,7 +597,11 @@ private fun RecurringTemplateAddDialog(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf(categories.firstOrNull() ?: "기본") }
+    var categoryId by remember {
+        mutableStateOf(
+            categories.firstOrNull()?.id ?: DEFAULT_CATEGORY_ID
+        )
+    }
     var repeatStart by remember { mutableStateOf(AppDate.today()) }
     var repeatEnd by remember { mutableStateOf(AppDate.today().addDays(30)) }
     var repeatType by remember { mutableStateOf(RecurrenceTypes.DAILY) }
@@ -591,7 +609,6 @@ private fun RecurringTemplateAddDialog(
     var monthlyDay by remember { mutableStateOf(AppDate.today().day.toString()) }
     var periodLengthDays by remember { mutableStateOf("1") }
     var showRangePicker by remember { mutableStateOf(false) }
-    var showCategorySelect by remember { mutableStateOf(false) }
 
     if (showRangePicker) {
         RangeDatePickerDialog(
@@ -606,21 +623,10 @@ private fun RecurringTemplateAddDialog(
         )
     }
 
-    if (showCategorySelect) {
-        CategorySelectionDialog(
-            viewModel = viewModel,
-            selectedCategory = category,
-            onCategorySelected = {
-                category = it
-                showCategorySelect = false
-            },
-            onDismiss = { showCategorySelect = false },
-        )
-    }
-
     val cleanPeriodLength = periodLengthDays.toIntOrNull()?.coerceAtLeast(1) ?: 1
     val cleanMonthlyDay = monthlyDay.toIntOrNull()?.coerceIn(1, 31) ?: 1
-    val canSave = title.isNotBlank() && (repeatType != RecurrenceTypes.WEEKLY || weeklyDays.isNotEmpty())
+    val canSave =
+        title.isNotBlank() && (repeatType != RecurrenceTypes.WEEKLY || weeklyDays.isNotEmpty())
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -649,10 +655,13 @@ private fun RecurringTemplateAddDialog(
                     )
                 }
                 item {
-                    OutlinedButton(
-                        onClick = { showCategorySelect = true },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("카테고리: $category") }
+                    CategorySelectorRow(
+                        label = "카테고리",
+                        categories = categories,
+                        selectedCategoryId = categoryId,
+                        onCategorySelected = { categoryId = it },
+                        onCategoryAdded = viewModel::addCategory,
+                    )
                 }
                 item {
                     OutlinedButton(
@@ -703,7 +712,7 @@ private fun RecurringTemplateAddDialog(
                         RecurringTemplate(
                             title = title,
                             description = description,
-                            category = category,
+                            categoryId = categoryId,
                             repeatStartDate = repeatStart,
                             repeatEndDate = repeatEnd,
                             repeatType = repeatType,
@@ -810,10 +819,24 @@ private fun WeeklyDaySelector(
 @Composable
 private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
     var showAddDialog by remember { mutableStateOf(false) }
-    var editingCategory by remember { mutableStateOf<String?>(null) }
-    var selectedCategoryForTodos by remember { mutableStateOf<String?>(null) }
+    var editingCategory by remember { mutableStateOf<Category?>(null) }
+    var deletingCategory by remember { mutableStateOf<Category?>(null) }
+    var selectedCategoryForTodos by remember { mutableStateOf<Category?>(null) }
+    var draggedCategoryId by remember { mutableStateOf<Long?>(null) }
+    var draggedItemInitialOffset by remember { mutableStateOf(0) }
+    var draggedItemSize by remember { mutableStateOf(0) }
+    var totalDragY by remember { mutableStateOf(0f) }
 
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val orderedCategories = remember { mutableStateListOf<Category>() }
+    val categoryListState = rememberLazyListState()
+
+    LaunchedEffect(categories) {
+        if (draggedCategoryId == null) {
+            orderedCategories.clear()
+            orderedCategories.addAll(categories)
+        }
+    }
 
     BackHandler(onBack = onBack)
 
@@ -842,7 +865,8 @@ private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Uni
     }
 
     if (editingCategory != null) {
-        var name by remember { mutableStateOf(editingCategory!!) }
+        val category = editingCategory!!
+        var name by remember(category.id) { mutableStateOf(category.name) }
         AlertDialog(
             onDismissRequest = { editingCategory = null },
             title = { Text("카테고리 수정") },
@@ -858,13 +882,55 @@ private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Uni
             confirmButton = {
                 Button(onClick = {
                     viewModel.updateCategory(
-                        editingCategory!!,
+                        category.id,
                         name,
                     )
                     editingCategory = null
-                }, enabled = name.isNotBlank() && name != editingCategory) { Text("수정") }
+                }, enabled = name.isNotBlank() && name.trim() != category.name) { Text("수정") }
             },
             dismissButton = { TextButton(onClick = { editingCategory = null }) { Text("취소") } },
+        )
+    }
+
+    if (deletingCategory != null) {
+        val category = deletingCategory!!
+        var moveTargetId by remember(
+            category.id,
+            categories
+        ) { mutableStateOf(DEFAULT_CATEGORY_ID) }
+        val moveTargets = categories.filter { it.id != category.id }
+
+        AlertDialog(
+            onDismissRequest = { deletingCategory = null },
+            title = { Text("카테고리 삭제") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("'${category.name}' 카테고리의 일정을 이동할 카테고리를 선택하세요.")
+                    moveTargets.forEach { target ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { moveTargetId = target.id }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = moveTargetId == target.id,
+                                onClick = { moveTargetId = target.id },
+                            )
+                            Text(target.name)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.deleteCategory(category.id, moveTargetId)
+                    deletingCategory = null
+                }) { Text("삭제") }
+            },
+            dismissButton = { TextButton(onClick = { deletingCategory = null }) { Text("취소") } },
         )
     }
 
@@ -902,20 +968,91 @@ private fun CategoryManagementScreen(viewModel: TodoViewModel, onBack: () -> Uni
         },
     ) { padding ->
         LazyColumn(
+            state = categoryListState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(20.dp),
+                .padding(padding)
+                .pointerInput(orderedCategories) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            categoryListState.layoutInfo.visibleItemsInfo
+                                .firstOrNull { item ->
+                                    offset.y.toInt() in item.offset..(item.offset + item.size)
+                                }?.let { item ->
+                                    draggedCategoryId = item.key as? Long
+                                    draggedItemInitialOffset = item.offset
+                                    draggedItemSize = item.size
+                                    totalDragY = 0f
+                                }
+                        },
+                        onDragCancel = {
+                            draggedCategoryId = null
+                            draggedItemSize = 0
+                            totalDragY = 0f
+                        },
+                        onDragEnd = {
+                            viewModel.reorderCategories(orderedCategories)
+                            draggedCategoryId = null
+                            draggedItemSize = 0
+                            totalDragY = 0f
+                        },
+                        onDrag = { change, dragAmount ->
+                            val draggedId =
+                                draggedCategoryId ?: return@detectDragGesturesAfterLongPress
+                            change.consume()
+                            totalDragY += dragAmount.y
+
+                            val draggedItem = categoryListState.layoutInfo.visibleItemsInfo
+                                .firstOrNull { it.key == draggedId }
+                                ?: return@detectDragGesturesAfterLongPress
+                            val draggedMiddle =
+                                draggedItemInitialOffset + totalDragY + draggedItem.size / 2f
+                            val targetItem = categoryListState.layoutInfo.visibleItemsInfo
+                                .firstOrNull { item ->
+                                    item.key != draggedId &&
+                                            draggedMiddle.toInt() in item.offset..(item.offset + item.size)
+                                }
+                                ?: return@detectDragGesturesAfterLongPress
+
+                            val fromIndex = orderedCategories.indexOfFirst { it.id == draggedId }
+                            val toIndex = targetItem.index
+                            if (fromIndex >= 0 && toIndex in orderedCategories.indices && fromIndex != toIndex) {
+                                orderedCategories.move(fromIndex, toIndex)
+                            }
+                        },
+                    )
+                },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(categories) { cat ->
+            itemsIndexed(orderedCategories, key = { _, category -> category.id }) { index, cat ->
                 CategoryItemTile(
                     category = cat,
+                    isDragging = draggedCategoryId == cat.id,
+                    isHiddenPlaceholder = draggedCategoryId == cat.id,
+                    dragOffsetY = 0f,
                     onEdit = { editingCategory = cat },
-                    onDelete = { viewModel.deleteCategory(cat) },
+                    onDelete = { deletingCategory = cat },
                     onClick = { selectedCategoryForTodos = cat },
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp)
                 )
             }
+        }
+        val draggedCategory = orderedCategories.firstOrNull { it.id == draggedCategoryId }
+        if (draggedCategory != null) {
+            CategoryItemTile(
+                category = draggedCategory,
+                isDragging = true,
+                isHiddenPlaceholder = false,
+                dragOffsetY = draggedItemInitialOffset + totalDragY,
+                onEdit = {},
+                onDelete = {},
+                onClick = {},
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(horizontal = 20.dp)
+                    .height(with(LocalDensity.current) { draggedItemSize.toDp() }),
+            )
         }
     }
 }
@@ -1046,15 +1183,28 @@ private fun BackupRestoreScreen(viewModel: TodoViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun CategoryItemTile(
-    category: String,
+    category: Category,
+    isDragging: Boolean,
+    isHiddenPlaceholder: Boolean = false,
+    dragOffsetY: Float,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val isDefault = category == "기본"
+    val isDefault = category.name == "기본"
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                alpha = when {
+                    isHiddenPlaceholder -> 0f
+                    isDragging -> 0.9f
+                    else -> 1f
+                }
+                translationY = dragOffsetY
+            }
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .border(
                 width = 1.dp,
@@ -1068,7 +1218,7 @@ private fun CategoryItemTile(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = category,
+            text = category.name,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
@@ -1098,13 +1248,13 @@ private fun CategoryItemTile(
 
 @Composable
 private fun CategoryTodoListDialog(
-    category: String,
+    category: Category,
     viewModel: TodoViewModel,
     onDismiss: () -> Unit,
 ) {
     val todos by viewModel.todos.collectAsStateWithLifecycle()
     val categoryTodos = remember(todos, category) {
-        todos.filter { it.category == category }.sortedBy { it.startDate }
+        todos.filter { it.categoryId == category.id }.sortedBy { it.startDate }
     }
     var selectedTodoId by remember { mutableStateOf<Long?>(null) }
 
@@ -1131,7 +1281,7 @@ private fun CategoryTodoListDialog(
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = "[$category] 일정",
+                    text = "[${category.name}] 일정",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -1190,7 +1340,9 @@ private fun RecurringTemplate.repeatSummary(): String = when (repeatType) {
     RecurrenceTypes.WEEKLY ->
         "매주 ${
             weeklyDayOptions()
-                .filter { (day, _) -> weeklyDays.split(",").mapNotNull(String::toIntOrNull).contains(day) }
+                .filter { (day, _) ->
+                    weeklyDays.split(",").mapNotNull(String::toIntOrNull).contains(day)
+                }
                 .joinToString(", ") { (_, label) -> label }
         }"
 
@@ -1207,6 +1359,12 @@ private fun weeklyDayOptions(): List<Pair<Int, String>> = listOf(
     Calendar.FRIDAY to "금",
     Calendar.SATURDAY to "토",
 )
+
+private fun <T> MutableList<T>.move(fromIndex: Int, toIndex: Int) {
+    if (fromIndex == toIndex) return
+    val item = removeAt(fromIndex)
+    add(toIndex, item)
+}
 
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)

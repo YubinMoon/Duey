@@ -538,11 +538,11 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
     var isEditing by remember { mutableStateOf(false) }
     var editTitle by remember { mutableStateOf(todo.title) }
     var editDescription by remember { mutableStateOf(todo.description) }
-    var editCategory by remember { mutableStateOf(todo.category) }
+    var editCategoryId by remember { mutableStateOf(todo.categoryId) }
     var editStart by remember { mutableStateOf(todo.startDate) }
     var editEnd by remember { mutableStateOf(todo.endDate) }
     var showRangePicker by remember { mutableStateOf(false) }
-    var showCategorySelect by remember { mutableStateOf(false) }
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
 
     if (showRangePicker) {
         RangeDatePickerDialog(
@@ -556,18 +556,6 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
             onDismiss = { showRangePicker = false },
         )
     }
-    if (showCategorySelect) {
-        CategorySelectionDialog(
-            viewModel = viewModel,
-            selectedCategory = editCategory,
-            onCategorySelected = {
-                editCategory = it
-                showCategorySelect = false
-            },
-            onDismiss = { showCategorySelect = false },
-        )
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -592,10 +580,13 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 1,
                     )
-                    OutlinedButton(
-                        onClick = { showCategorySelect = true },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("카테고리: $editCategory") }
+                    CategorySelectorRow(
+                        label = "카테고리",
+                        categories = categories,
+                        selectedCategoryId = editCategoryId,
+                        onCategorySelected = { editCategoryId = it },
+                        onCategoryAdded = viewModel::addCategory,
+                    )
                     OutlinedButton(
                         onClick = { showRangePicker = true },
                         modifier = Modifier.fillMaxWidth(),
@@ -606,7 +597,7 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Text(
-                            text = todo.category,
+                            text = viewModel.categoryName(todo.categoryId),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
@@ -685,7 +676,7 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
                                 todo.copy(
                                     title = editTitle,
                                     description = editDescription,
-                                    category = editCategory,
+                                    categoryId = editCategoryId,
                                     startDate = editStart,
                                     endDate = editEnd,
                                 ),
@@ -720,17 +711,18 @@ fun DetailDialog(todo: TodoItem, viewModel: TodoViewModel, today: AppDate, onDis
 @Composable
 fun CategorySelectionDialog(
     viewModel: TodoViewModel,
-    selectedCategory: String,
-    onCategorySelected: (String) -> Unit,
+    selectedCategoryId: Long,
+    onCategorySelected: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
 
     if (showAddDialog) {
         CategoryAddDialog(onCategoryAdded = { newCat ->
-            viewModel.addCategory(newCat)
+            viewModel.addCategory(newCat) { category ->
+                onCategorySelected(category.id)
+            }
             showAddDialog = false
-            onCategorySelected(newCat)
         }, onDismiss = { showAddDialog = false })
     }
 
@@ -760,7 +752,7 @@ fun CategorySelectionDialog(
                         .heightIn(max = 200.dp), // Reduced height
                 ) {
                     items(cats) { cat ->
-                        val isSelected = cat == selectedCategory
+                        val isSelected = cat.id == selectedCategoryId
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -772,12 +764,12 @@ fun CategorySelectionDialog(
                                         Color.Transparent
                                     },
                                 )
-                                .clickable { onCategorySelected(cat) }
+                                .clickable { onCategorySelected(cat.id) }
                                 .padding(vertical = 12.dp, horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = cat,
+                                text = cat.name,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
@@ -864,7 +856,7 @@ private fun ScheduleScreenPreview() {
             description = "Review requirements and timeline",
             startDate = today,
             endDate = today.addDays(2),
-            category = "Preview",
+            categoryId = 1L,
         ),
         TodoItem(
             id = 2,
@@ -872,7 +864,7 @@ private fun ScheduleScreenPreview() {
             description = "5 km walk",
             startDate = selectedDate,
             endDate = selectedDate,
-            category = "Personal",
+            categoryId = 1L,
         ),
         TodoItem(
             id = 3,
@@ -880,7 +872,7 @@ private fun ScheduleScreenPreview() {
             description = "Finish chapter 3",
             startDate = selectedDate,
             endDate = selectedDate.addDays(1),
-            category = "Personal",
+            categoryId = 1L,
             isCompleted = true,
         ),
     )

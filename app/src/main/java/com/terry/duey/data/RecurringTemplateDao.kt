@@ -29,9 +29,6 @@ interface RecurringTemplateDao {
     @Query("UPDATE recurring_templates SET lastGeneratedUntil = :lastGeneratedUntil WHERE id = :id")
     suspend fun updateLastGeneratedUntil(id: Long, lastGeneratedUntil: AppDate)
 
-    @Query("UPDATE recurring_templates SET category = :newCategory WHERE category = :oldCategory")
-    suspend fun updateTemplateCategory(oldCategory: String, newCategory: String)
-
-    @Query("UPDATE recurring_templates SET category = :defaultCategory WHERE category = :category")
-    suspend fun resetCategory(category: String, defaultCategory: String)
+    @Query("UPDATE recurring_templates SET categoryId = :newCategoryId WHERE categoryId = :oldCategoryId")
+    suspend fun moveTemplatesToCategory(oldCategoryId: Long, newCategoryId: Long)
 }

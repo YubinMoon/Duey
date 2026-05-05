@@ -15,7 +15,7 @@ data class RecurringTemplate(
     val id: Long = 0,
     val title: String,
     val description: String,
-    val category: String = "기본",
+    val categoryId: Long = 1L,
     val repeatStartDate: AppDate,
     val repeatEndDate: AppDate,
     val repeatType: String,
