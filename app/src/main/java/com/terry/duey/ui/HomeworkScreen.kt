@@ -83,15 +83,22 @@ fun HomeworkScreen(viewModel: TodoViewModel) {
         derivedStateOf {
             val dateToTodos = mutableMapOf<AppDate, MutableList<TodoItem>>()
 
-            // Consider all todos and map them to dates within our window
+            // Today shows every active todo; future groups show only start/end dates.
             todos.forEach { todo ->
-                // Start checking from today or the todo's start date, whichever is later
-                var d = if (todo.startDate < today) today else todo.startDate
-                val end = if (todo.endDate > maxDate) maxDate else todo.endDate
+                fun addTodoForDate(date: AppDate) {
+                    if (date in today..maxDate) {
+                        dateToTodos.getOrPut(date) { mutableListOf() }.add(todo)
+                    }
+                }
 
-                while (d <= end) {
-                    dateToTodos.getOrPut(d) { mutableListOf() }.add(todo)
-                    d = d.addDays(1)
+                if (todo.startDate <= today && today <= todo.endDate) {
+                    addTodoForDate(today)
+                }
+                if (todo.startDate > today) {
+                    addTodoForDate(todo.startDate)
+                }
+                if (todo.endDate > today && todo.endDate != todo.startDate) {
+                    addTodoForDate(todo.endDate)
                 }
             }
 
