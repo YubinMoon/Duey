@@ -13,6 +13,7 @@ duey:
   auth:
     google-client-id: ${GOOGLE_CLIENT_ID:}
     jwt-secret: ${JWT_SECRET:debug-only-secret-change-before-use-debug-only-secret}
+    debug-user-id: ${DEBUG_USER_ID:debug-local-user}
   ai:
-    provider: ${AI_PROVIDER:gemini}
+    provider: ${AI_PROVIDER:debug}
     gemini-api-key: ${GEMINI_API_KEY:}

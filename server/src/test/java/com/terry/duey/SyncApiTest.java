@@ -21,11 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 @Import(ApiTestConfig.class)
 class SyncApiTest {
-    @Autowired
-    MockMvc mockMvc;
+    @Autowired MockMvc mockMvc;
 
-    @Autowired
-    JdbcClient jdbcClient;
+    @Autowired JdbcClient jdbcClient;
 
     @BeforeEach
     void cleanDatabase() {
@@ -37,18 +35,19 @@ class SyncApiTest {
 
     @Test
     void syncApi_rejectsUnauthenticatedRequests() throws Exception {
-        mockMvc.perform(get("/api/sync/v1/bootstrap"))
-                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/sync/v1/bootstrap")).andExpect(status().isForbidden());
     }
 
     @Test
     void pushPersistsAndBootstrapReturnsUserRecords() throws Exception {
         String token = accessToken("valid-google-token");
 
-        mockMvc.perform(post("/api/sync/v1/push")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(
+                        post("/api/sync/v1/push")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
                                 {
                                   "categories": [
                                     {
@@ -79,8 +78,7 @@ class SyncApiTest {
                 .andExpect(jsonPath("$.categories[0].name").value("학교"))
                 .andExpect(jsonPath("$.todos[0].title").value("과제"));
 
-        mockMvc.perform(get("/api/sync/v1/bootstrap")
-                        .header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/api/sync/v1/bootstrap").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.categories[0].id").value("category-1"))
                 .andExpect(jsonPath("$.todos[0].id").value("todo-1"));
@@ -91,27 +89,36 @@ class SyncApiTest {
         String firstUserToken = accessToken("valid-google-token");
         pushCategory(firstUserToken, "category-1", "학교");
 
-        jdbcClient.sql("""
+        jdbcClient
+                .sql(
+                        """
                         INSERT INTO users (id, google_subject, email, name, created_at, updated_at)
                         VALUES ('other-user', 'other-subject', 'other@example.com', 'Other', '2026-05-05T00:00:00Z', '2026-05-05T00:00:00Z')
-                        """).update();
-        jdbcClient.sql("""
+                        """)
+                .update();
+        jdbcClient
+                .sql(
+                        """
                         INSERT INTO categories (id, user_id, name, sort_order, created_at, updated_at)
                         VALUES ('other-category', 'other-user', '개인', 0, '2026-05-05T00:00:00Z', '2026-05-05T00:00:00Z')
-                        """).update();
+                        """)
+                .update();
 
-        mockMvc.perform(get("/api/sync/v1/bootstrap")
-                        .header("Authorization", "Bearer " + firstUserToken))
+        mockMvc.perform(
+                        get("/api/sync/v1/bootstrap")
+                                .header("Authorization", "Bearer " + firstUserToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.categories.length()").value(1))
                 .andExpect(jsonPath("$.categories[0].name").value("학교"));
     }
 
     private void pushCategory(String token, String id, String name) throws Exception {
-        mockMvc.perform(post("/api/sync/v1/push")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(
+                        post("/api/sync/v1/push")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
                                 {
                                   "categories": [
                                     {
@@ -125,18 +132,21 @@ class SyncApiTest {
                                   "todos": [],
                                   "recurringTemplates": []
                                 }
-                                """.formatted(id, name)))
+                                """
+                                                .formatted(id, name)))
                 .andExpect(status().isOk());
     }
 
     private String accessToken(String idToken) throws Exception {
-        String response = mockMvc.perform(post("/api/auth/google")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"" + idToken + "\"}"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        String response =
+                mockMvc.perform(
+                                post("/api/auth/google")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("{\"idToken\":\"" + idToken + "\"}"))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
         return response.split("\"accessToken\":\"")[1].split("\"")[0];
     }
 }

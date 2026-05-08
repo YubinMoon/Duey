@@ -21,12 +21,9 @@ public class AuthController {
         return authService.loginWithGoogle(request.idToken());
     }
 
-    public record GoogleAuthRequest(@NotBlank String idToken) {
-    }
+    public record GoogleAuthRequest(@NotBlank String idToken) {}
 
-    public record AuthResponse(String accessToken, String refreshToken, UserResponse user) {
-    }
+    public record AuthResponse(String accessToken, String refreshToken, UserResponse user) {}
 
-    public record UserResponse(String id, String email, String name) {
-    }
+    public record UserResponse(String id, String email, String name) {}
 }

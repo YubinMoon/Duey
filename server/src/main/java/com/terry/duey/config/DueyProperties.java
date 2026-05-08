@@ -7,11 +7,9 @@ public record DueyProperties(Auth auth, Ai ai) {
     public record Auth(
             String googleClientId,
             String jwtSecret,
+            String debugUserId,
             long accessTokenMinutes,
-            long refreshTokenDays
-    ) {
-    }
+            long refreshTokenDays) {}
 
-    public record Ai(String provider, String geminiApiKey, String geminiModel) {
-    }
+    public record Ai(String provider, String geminiApiKey, String geminiModel) {}
 }

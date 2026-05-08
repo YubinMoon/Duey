@@ -1,4 +1,3 @@
 package com.terry.duey.auth;
 
-public record UserPrincipal(String userId) {
-}
+public record UserPrincipal(String userId) {}

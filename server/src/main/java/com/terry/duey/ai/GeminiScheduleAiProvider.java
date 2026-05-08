@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -13,15 +14,20 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
+@Profile("!debug")
 public class GeminiScheduleAiProvider implements ScheduleAiProvider {
     private final DueyProperties properties;
     private final JsonMapper jsonMapper;
     private final RestClient restClient;
 
-    public GeminiScheduleAiProvider(DueyProperties properties, JsonMapper jsonMapper, RestClient.Builder restClientBuilder) {
+    public GeminiScheduleAiProvider(
+            DueyProperties properties,
+            JsonMapper jsonMapper,
+            RestClient.Builder restClientBuilder) {
         this.properties = properties;
         this.jsonMapper = jsonMapper;
-        this.restClient = restClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
+        this.restClient =
+                restClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
     }
 
     @Override
@@ -30,82 +36,102 @@ public class GeminiScheduleAiProvider implements ScheduleAiProvider {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Audio file is empty");
         }
         if (!"gemini".equalsIgnoreCase(properties.ai().provider())) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI provider is not configured");
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE, "AI provider is not configured");
         }
         if (properties.ai().geminiApiKey() == null || properties.ai().geminiApiKey().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Gemini API key is not configured");
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE, "Gemini API key is not configured");
         }
 
-        JsonNode response = restClient.post()
-                .uri("/v1beta/models/{model}:generateContent", properties.ai().geminiModel())
-                .header("x-goog-api-key", properties.ai().geminiApiKey())
-                .body(geminiRequest(audioBytes, mimeType))
-                .retrieve()
-                .body(JsonNode.class);
+        JsonNode response =
+                restClient
+                        .post()
+                        .uri(
+                                "/v1beta/models/{model}:generateContent",
+                                properties.ai().geminiModel())
+                        .header("x-goog-api-key", properties.ai().geminiApiKey())
+                        .body(geminiRequest(audioBytes, mimeType))
+                        .retrieve()
+                        .body(JsonNode.class);
 
-        String text = response == null ? "" : response.path("candidates")
-                .path(0)
-                .path("content")
-                .path("parts")
-                .path(0)
-                .path("text")
-                .asText("");
+        String text =
+                response == null
+                        ? ""
+                        : response.path("candidates")
+                                .path(0)
+                                .path("content")
+                                .path("parts")
+                                .path(0)
+                                .path("text")
+                                .asString("");
         return parseDraft(text);
     }
 
     private Map<String, Object> geminiRequest(byte[] audioBytes, String mimeType) {
-        Map<String, Object> schema = Map.of(
-                "type", "object",
-                "properties", Map.of(
-                        "title", Map.of("type", "string"),
-                        "description", Map.of("type", "string"),
-                        "category", Map.of("type", "string"),
-                        "start_date", Map.of("type", "string", "format", "date"),
-                        "end_date", Map.of("type", "string", "format", "date")
-                ),
-                "required", List.of("title", "start_date", "end_date"),
-                "additionalProperties", false
-        );
+        Map<String, Object> schema =
+                Map.of(
+                        "type",
+                        "object",
+                        "properties",
+                        Map.of(
+                                "title",
+                                Map.of("type", "string"),
+                                "description",
+                                Map.of("type", "string"),
+                                "category",
+                                Map.of("type", "string"),
+                                "start_date",
+                                Map.of("type", "string", "format", "date"),
+                                "end_date",
+                                Map.of("type", "string", "format", "date")),
+                        "required",
+                        List.of("title", "start_date", "end_date"),
+                        "additionalProperties",
+                        false);
         return Map.of(
-                "contents", List.of(Map.of(
-                        "parts", List.of(
-                                Map.of("text", "첨부된 한국어 음성에서 일정을 추출하세요."),
-                                Map.of("inline_data", Map.of(
-                                        "mime_type", mimeType,
-                                        "data", Base64.getEncoder().encodeToString(audioBytes)
-                                ))
-                        )
-                )),
-                "generationConfig", Map.of(
-                        "responseMimeType", "application/json",
-                        "responseJsonSchema", schema
-                )
-        );
+                "contents",
+                List.of(
+                        Map.of(
+                                "parts",
+                                List.of(
+                                        Map.of("text", "첨부된 한국어 음성에서 일정을 추출하세요."),
+                                        Map.of(
+                                                "inline_data",
+                                                Map.of(
+                                                        "mime_type",
+                                                        mimeType,
+                                                        "data",
+                                                        Base64.getEncoder()
+                                                                .encodeToString(audioBytes)))))),
+                "generationConfig",
+                Map.of("responseMimeType", "application/json", "responseJsonSchema", schema));
     }
 
     private ParsedScheduleDraft parseDraft(String rawText) {
         try {
             JsonNode json = jsonMapper.readTree(rawText.trim());
-            String title = json.path("title").asText("").trim();
+            String title = json.path("title").asString("").trim();
             if (title.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI response did not include a title");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY, "AI response did not include a title");
             }
-            LocalDate start = parseDate(json.path("start_date").asText(null), LocalDate.now());
-            LocalDate end = parseDate(json.path("end_date").asText(null), start);
+            LocalDate start = parseDate(json.path("start_date").asString(null), LocalDate.now());
+            LocalDate end = parseDate(json.path("end_date").asString(null), start);
             if (end.isBefore(start)) {
                 end = start;
             }
             return new ParsedScheduleDraft(
                     title,
-                    json.path("description").asText("").trim(),
-                    json.path("category").asText("").trim(),
+                    json.path("description").asString("").trim(),
+                    json.path("category").asString("").trim(),
                     start.toString(),
-                    end.toString()
-            );
+                    end.toString());
         } catch (ResponseStatusException exception) {
             throw exception;
         } catch (Exception exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI response could not be parsed", exception);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY, "AI response could not be parsed", exception);
         }
     }
 

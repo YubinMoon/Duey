@@ -9,7 +9,7 @@ plugins {
 
 spotless {
     kotlin {
-        target("**/*.kt")
+        target("app/src/**/*.kt")
         ktlint("1.5.0").editorConfigOverride(
             mapOf(
                 "ktlint_standard_function-naming" to "disabled",
@@ -20,7 +20,39 @@ spotless {
         endWithNewline()
     }
     kotlinGradle {
-        target("*.gradle.kts")
+        target("*.gradle.kts", "app/*.gradle.kts", "server/*.gradle.kts")
         ktlint("1.5.0")
+    }
+    java {
+        target("server/src/**/*.java")
+        googleJavaFormat("1.24.0").aosp()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        leadingTabsToSpaces()
+        endWithNewline()
+    }
+}
+
+tasks.register("format") {
+    group = "formatting"
+    description = "Formats app and server source code."
+    dependsOn("spotlessApply")
+}
+
+project(":app") {
+    tasks.register("format") {
+        group = "formatting"
+        description = "Formats Android app source code."
+        dependsOn(rootProject.tasks.named("spotlessKotlinApply"))
+        dependsOn(rootProject.tasks.named("spotlessKotlinGradleApply"))
+    }
+}
+
+project(":server") {
+    tasks.register("format") {
+        group = "formatting"
+        description = "Formats server source code."
+        dependsOn(rootProject.tasks.named("spotlessJavaApply"))
+        dependsOn(rootProject.tasks.named("spotlessKotlinGradleApply"))
     }
 }

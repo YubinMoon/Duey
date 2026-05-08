@@ -1,12 +1,13 @@
 package com.terry.duey.auth
 
 import android.content.Context
+import com.terry.duey.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class AuthSession(context: Context) {
     private val preferences = context.getSharedPreferences("duey_auth", Context.MODE_PRIVATE)
-    private val _isLoggedIn = MutableStateFlow(!preferences.getString(KEY_ACCESS_TOKEN, null).isNullOrBlank())
+    private val _isLoggedIn = MutableStateFlow(isDebugAuthEnabled() || !preferences.getString(KEY_ACCESS_TOKEN, null).isNullOrBlank())
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
     fun accessToken(): String? = preferences.getString(KEY_ACCESS_TOKEN, null)
@@ -21,8 +22,10 @@ class AuthSession(context: Context) {
 
     fun clear() {
         preferences.edit().clear().apply()
-        _isLoggedIn.value = false
+        _isLoggedIn.value = isDebugAuthEnabled()
     }
+
+    private fun isDebugAuthEnabled(): Boolean = BuildConfig.APP_ENV == "debug"
 
     private companion object {
         const val KEY_ACCESS_TOKEN = "access_token"

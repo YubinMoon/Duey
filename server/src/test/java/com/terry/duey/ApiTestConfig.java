@@ -17,9 +17,11 @@ public class ApiTestConfig {
     @Bean
     @Primary
     GoogleTokenVerifier googleTokenVerifier() {
-        return idToken -> "valid-google-token".equals(idToken)
-                ? Optional.of(new GoogleUser("google-subject-1", "test@example.com", "Test User"))
-                : Optional.empty();
+        return idToken ->
+                "valid-google-token".equals(idToken)
+                        ? Optional.of(
+                                new GoogleUser("google-subject-1", "test@example.com", "Test User"))
+                        : Optional.empty();
     }
 
     @Bean
@@ -29,9 +31,9 @@ public class ApiTestConfig {
     }
 
     public static class FakeScheduleAiProvider implements ScheduleAiProvider {
-        private final AtomicReference<ParsedScheduleDraft> nextResponse = new AtomicReference<>(
-                new ParsedScheduleDraft("시험", "설명", "학교", "2026-05-05", "2026-05-05")
-        );
+        private final AtomicReference<ParsedScheduleDraft> nextResponse =
+                new AtomicReference<>(
+                        new ParsedScheduleDraft("시험", "설명", "학교", "2026-05-05", "2026-05-05"));
         private final AtomicReference<RuntimeException> nextFailure = new AtomicReference<>();
 
         @Override
@@ -44,7 +46,9 @@ public class ApiTestConfig {
         }
 
         public void failNextProviderResponse() {
-            nextFailure.set(new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI response could not be parsed"));
+            nextFailure.set(
+                    new ResponseStatusException(
+                            HttpStatus.BAD_GATEWAY, "AI response could not be parsed"));
         }
     }
 }

@@ -1,5 +1,6 @@
 plugins {
     java
+    checkstyle
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
 }
@@ -11,6 +12,15 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+}
+
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-Xlint:deprecation")
+}
+
+checkstyle {
+    toolVersion = "10.21.4"
+    configFile = rootProject.file("config/checkstyle/checkstyle.xml")
 }
 
 dependencies {
@@ -32,6 +42,19 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
     systemProperty("spring.profiles.active", "test")
+}
+
+tasks.withType<Checkstyle> {
+    reports {
+        xml.required.set(false)
+        html.required.set(true)
+    }
+}
+
+tasks.register("lint") {
+    group = "verification"
+    description = "Runs server Java lint checks."
+    dependsOn("compileJava", "checkstyleMain", "checkstyleTest")
 }
 
 tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunDebug") {

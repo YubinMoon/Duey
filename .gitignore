@@ -149,6 +149,11 @@ proguard/
 # Log Files
 *.log
 
+# Local debug server database
+duey_debug.db
+server/duey_debug.db
+server/duey_debug.db-*
+
 # Android Studio
 /*/build/
 /*/local.properties

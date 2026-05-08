@@ -60,14 +60,12 @@ class UpdateChecker {
         return match.groupValues.drop(1).joinToString(".")
     }
 
-    private fun JSONArray.findApkUrl(): String? {
-        return asObjects()
-            .firstOrNull { asset ->
-                asset.optString("name", "").endsWith(".apk") &&
-                    asset.optString("browser_download_url", "").startsWith("https://")
-            }
-            ?.optString("browser_download_url")
-    }
+    private fun JSONArray.findApkUrl(): String? = asObjects()
+        .firstOrNull { asset ->
+            asset.optString("name", "").endsWith(".apk") &&
+                asset.optString("browser_download_url", "").startsWith("https://")
+        }
+        ?.optString("browser_download_url")
 
     private fun JSONArray.asObjects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
 

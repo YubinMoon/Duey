@@ -21,11 +21,12 @@ data class ParsedScheduleDraft(
 
 class ScheduleVoiceParser {
     fun parseAudio(audioBytes: ByteArray, mimeType: String, accessToken: String?): Result<ParsedScheduleDraft> {
-        if (accessToken.isNullOrBlank()) {
-            return Result.failure(IllegalStateException("로그인이 필요합니다."))
+        val canUseDebugAuth = BuildConfig.APP_ENV == "debug"
+        if (accessToken.isNullOrBlank() && !canUseDebugAuth) {
+            return Result.failure(IllegalStateException("Login is required."))
         }
         if (audioBytes.isEmpty()) {
-            return Result.failure(IllegalStateException("음성 데이터가 비어 있습니다."))
+            return Result.failure(IllegalStateException("Voice data is empty."))
         }
 
         return runCatching {
@@ -34,7 +35,9 @@ class ScheduleVoiceParser {
                 (URL("${BuildConfig.SERVER_BASE_URL.trimEnd('/')}/api/ai/schedule/voice").openConnection() as HttpURLConnection)
                     .apply {
                         requestMethod = "POST"
-                        setRequestProperty("Authorization", "Bearer $accessToken")
+                        if (!accessToken.isNullOrBlank()) {
+                            setRequestProperty("Authorization", "Bearer $accessToken")
+                        }
                         setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
                         doOutput = true
                         connectTimeout = 10_000
@@ -61,11 +64,11 @@ class ScheduleVoiceParser {
                 BufferedReader(connection.inputStream.reader()).use { it.readText() }
             } else {
                 val errorText = connection.errorStream?.reader()?.use { it.readText() }.orEmpty()
-                throw IllegalStateException(errorText.ifBlank { "음성 일정 변환에 실패했습니다." })
+                throw IllegalStateException(errorText.ifBlank { "Failed to parse voice schedule." })
             }
             val json = JSONObject(responseText)
             val title = json.getString("title").trim()
-            require(title.isNotBlank()) { "제목을 추출하지 못했습니다." }
+            require(title.isNotBlank()) { "Title could not be parsed." }
 
             val today = AppDate.today()
             val start = parseDateOrToday(json.optString("startDate"), today)

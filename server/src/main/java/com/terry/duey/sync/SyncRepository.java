@@ -28,77 +28,88 @@ public class SyncRepository {
     }
 
     private List<SyncPayload.CategoryPayload> categories(String userId) {
-        return jdbcClient.sql("""
+        return jdbcClient
+                .sql(
+                        """
                         SELECT id, name, sort_order, created_at, updated_at, deleted_at
                         FROM categories WHERE user_id = :userId ORDER BY sort_order ASC, name ASC
                         """)
                 .param("userId", userId)
-                .query((rs, rowNum) -> new SyncPayload.CategoryPayload(
-                        rs.getString("id"),
-                        rs.getString("name"),
-                        rs.getInt("sort_order"),
-                        rs.getString("created_at"),
-                        rs.getString("updated_at"),
-                        rs.getString("deleted_at")
-                ))
+                .query(
+                        (rs, rowNum) ->
+                                new SyncPayload.CategoryPayload(
+                                        rs.getString("id"),
+                                        rs.getString("name"),
+                                        rs.getInt("sort_order"),
+                                        rs.getString("created_at"),
+                                        rs.getString("updated_at"),
+                                        rs.getString("deleted_at")))
                 .list();
     }
 
     private List<SyncPayload.TodoPayload> todos(String userId) {
-        return jdbcClient.sql("""
+        return jdbcClient
+                .sql(
+                        """
                         SELECT id, title, description, category_id, start_date, end_date, is_completed,
                                recurring_template_id, recurring_occurrence_date, created_at, updated_at, deleted_at
                         FROM todos WHERE user_id = :userId ORDER BY start_date ASC, end_date ASC, title ASC
                         """)
                 .param("userId", userId)
-                .query((rs, rowNum) -> new SyncPayload.TodoPayload(
-                        rs.getString("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getString("category_id"),
-                        rs.getString("start_date"),
-                        rs.getString("end_date"),
-                        rs.getInt("is_completed") == 1,
-                        rs.getString("recurring_template_id"),
-                        rs.getString("recurring_occurrence_date"),
-                        rs.getString("created_at"),
-                        rs.getString("updated_at"),
-                        rs.getString("deleted_at")
-                ))
+                .query(
+                        (rs, rowNum) ->
+                                new SyncPayload.TodoPayload(
+                                        rs.getString("id"),
+                                        rs.getString("title"),
+                                        rs.getString("description"),
+                                        rs.getString("category_id"),
+                                        rs.getString("start_date"),
+                                        rs.getString("end_date"),
+                                        rs.getInt("is_completed") == 1,
+                                        rs.getString("recurring_template_id"),
+                                        rs.getString("recurring_occurrence_date"),
+                                        rs.getString("created_at"),
+                                        rs.getString("updated_at"),
+                                        rs.getString("deleted_at")))
                 .list();
     }
 
     private List<SyncPayload.RecurringTemplatePayload> recurringTemplates(String userId) {
-        return jdbcClient.sql("""
+        return jdbcClient
+                .sql(
+                        """
                         SELECT id, title, description, category_id, repeat_start_date, repeat_end_date,
                                repeat_type, weekly_days, monthly_day, period_length_days, last_generated_until,
                                created_at, updated_at, deleted_at
                         FROM recurring_templates WHERE user_id = :userId ORDER BY repeat_start_date ASC, title ASC
                         """)
                 .param("userId", userId)
-                .query((rs, rowNum) -> new SyncPayload.RecurringTemplatePayload(
-                        rs.getString("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getString("category_id"),
-                        rs.getString("repeat_start_date"),
-                        rs.getString("repeat_end_date"),
-                        rs.getString("repeat_type"),
-                        rs.getString("weekly_days"),
-                        rs.getInt("monthly_day"),
-                        rs.getInt("period_length_days"),
-                        rs.getString("last_generated_until"),
-                        rs.getString("created_at"),
-                        rs.getString("updated_at"),
-                        rs.getString("deleted_at")
-                ))
+                .query(
+                        (rs, rowNum) ->
+                                new SyncPayload.RecurringTemplatePayload(
+                                        rs.getString("id"),
+                                        rs.getString("title"),
+                                        rs.getString("description"),
+                                        rs.getString("category_id"),
+                                        rs.getString("repeat_start_date"),
+                                        rs.getString("repeat_end_date"),
+                                        rs.getString("repeat_type"),
+                                        rs.getString("weekly_days"),
+                                        rs.getInt("monthly_day"),
+                                        rs.getInt("period_length_days"),
+                                        rs.getString("last_generated_until"),
+                                        rs.getString("created_at"),
+                                        rs.getString("updated_at"),
+                                        rs.getString("deleted_at")))
                 .list();
     }
 
     private void upsertCategory(String userId, SyncPayload.CategoryPayload category) {
         String id = idOrNew(category.id());
         if (exists("categories", userId, id)) {
-            jdbcClient.sql("""
+            jdbcClient
+                    .sql(
+                            """
                             UPDATE categories SET name = :name, sort_order = :sortOrder,
                                    updated_at = :updatedAt, deleted_at = :deletedAt
                             WHERE user_id = :userId AND id = :id
@@ -111,7 +122,9 @@ public class SyncRepository {
                     .param("id", id)
                     .update();
         } else {
-            jdbcClient.sql("""
+            jdbcClient
+                    .sql(
+                            """
                             INSERT INTO categories (id, user_id, name, sort_order, created_at, updated_at, deleted_at)
                             VALUES (:id, :userId, :name, :sortOrder, :createdAt, :updatedAt, :deletedAt)
                             """)
@@ -129,7 +142,9 @@ public class SyncRepository {
     private void upsertTodo(String userId, SyncPayload.TodoPayload todo) {
         String id = idOrNew(todo.id());
         if (exists("todos", userId, id)) {
-            jdbcClient.sql("""
+            jdbcClient
+                    .sql(
+                            """
                             UPDATE todos SET title = :title, description = :description, category_id = :categoryId,
                                    start_date = :startDate, end_date = :endDate, is_completed = :completed,
                                    recurring_template_id = :recurringTemplateId,
@@ -151,7 +166,9 @@ public class SyncRepository {
                     .param("id", id)
                     .update();
         } else {
-            jdbcClient.sql("""
+            jdbcClient
+                    .sql(
+                            """
                             INSERT INTO todos (
                                 id, user_id, title, description, category_id, start_date, end_date, is_completed,
                                 recurring_template_id, recurring_occurrence_date, created_at, updated_at, deleted_at
@@ -177,10 +194,13 @@ public class SyncRepository {
         }
     }
 
-    private void upsertRecurringTemplate(String userId, SyncPayload.RecurringTemplatePayload template) {
+    private void upsertRecurringTemplate(
+            String userId, SyncPayload.RecurringTemplatePayload template) {
         String id = idOrNew(template.id());
         if (exists("recurring_templates", userId, id)) {
-            jdbcClient.sql("""
+            jdbcClient
+                    .sql(
+                            """
                             UPDATE recurring_templates SET title = :title, description = :description,
                                    category_id = :categoryId, repeat_start_date = :repeatStartDate,
                                    repeat_end_date = :repeatEndDate, repeat_type = :repeatType,
@@ -206,7 +226,9 @@ public class SyncRepository {
                     .param("id", id)
                     .update();
         } else {
-            jdbcClient.sql("""
+            jdbcClient
+                    .sql(
+                            """
                             INSERT INTO recurring_templates (
                                 id, user_id, title, description, category_id, repeat_start_date, repeat_end_date,
                                 repeat_type, weekly_days, monthly_day, period_length_days, last_generated_until,
@@ -237,11 +259,16 @@ public class SyncRepository {
     }
 
     private boolean exists(String table, String userId, String id) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM " + table + " WHERE user_id = :userId AND id = :id")
-                .param("userId", userId)
-                .param("id", id)
-                .query(Integer.class)
-                .single() > 0;
+        return jdbcClient
+                        .sql(
+                                "SELECT COUNT(*) FROM "
+                                        + table
+                                        + " WHERE user_id = :userId AND id = :id")
+                        .param("userId", userId)
+                        .param("id", id)
+                        .query(Integer.class)
+                        .single()
+                > 0;
     }
 
     private String idOrNew(String id) {

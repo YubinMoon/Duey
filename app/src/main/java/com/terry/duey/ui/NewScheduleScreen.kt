@@ -70,6 +70,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,10 +94,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.core.content.ContextCompat
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.terry.duey.BuildConfig
 import com.terry.duey.model.AppDate
 import com.terry.duey.model.Category
@@ -106,6 +110,7 @@ import com.terry.duey.ui.theme.SaturdayBlue
 import com.terry.duey.ui.theme.SundayRed
 import com.terry.duey.viewmodel.TodoViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Calendar
 import kotlin.math.PI
@@ -126,6 +131,8 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val credentialManager = remember(context) { CredentialManager.create(context) }
     val voiceRecorder = remember { HoldVoiceRecorder() }
     var isRecordingVoice by remember { mutableStateOf(false) }
     var voiceButtonState by remember { mutableStateOf<VoiceButtonState>(VoiceButtonState.Idle) }
@@ -134,25 +141,6 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) viewModel.clearVoiceInputState()
         }
-    val googleSignInClient = remember {
-        val optionsBuilder = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-        if (BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
-            optionsBuilder.requestIdToken(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-        }
-        GoogleSignIn.getClient(
-            context,
-            optionsBuilder.build(),
-        )
-    }
-    val googleLoginLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val account = runCatching {
-                GoogleSignIn.getSignedInAccountFromIntent(result.data).getResult(ApiException::class.java)
-            }.getOrNull()
-            viewModel.signInWithGoogle(account?.idToken)
-        }
-
     DisposableEffect(Unit) {
         onDispose {
             voiceRecorder.cancel()
@@ -225,7 +213,10 @@ fun NewScheduleScreen(viewModel: TodoViewModel, onSaved: () -> Unit = {}) {
         },
         onVoiceStateChange = { voiceButtonState = it },
         onLoginClick = {
-            googleLoginLauncher.launch(googleSignInClient.signInIntent)
+            coroutineScope.launch {
+                val idToken = requestGoogleIdToken(credentialManager, context)
+                viewModel.signInWithGoogle(idToken)
+            }
         },
         onVoiceStart = voiceStart@{
             if (!isLoggedIn) return@voiceStart false
@@ -439,6 +430,38 @@ private fun NewScheduleContent(
         ) {
             VoiceRecordingOverlay(levels = voiceLevels)
         }
+    }
+}
+
+private suspend fun requestGoogleIdToken(
+    credentialManager: CredentialManager,
+    context: Context,
+): String? {
+    if (BuildConfig.GOOGLE_WEB_CLIENT_ID.isBlank()) return null
+
+    val request = GetCredentialRequest.Builder()
+        .addCredentialOption(
+            GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                .build(),
+        )
+        .build()
+
+    return try {
+        val credential = credentialManager.getCredential(
+            context = context,
+            request = request,
+        ).credential
+        if (credential is CustomCredential &&
+            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        ) {
+            GoogleIdTokenCredential.createFrom(credential.data).idToken
+        } else {
+            null
+        }
+    } catch (_: GetCredentialException) {
+        null
+    } catch (_: RuntimeException) {
+        null
     }
 }
 

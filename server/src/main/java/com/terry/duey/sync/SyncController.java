@@ -23,7 +23,8 @@ public class SyncController {
     }
 
     @PostMapping("/push")
-    public SyncPayload push(@AuthenticationPrincipal UserPrincipal user, @RequestBody SyncPayload request) {
+    public SyncPayload push(
+            @AuthenticationPrincipal UserPrincipal user, @RequestBody SyncPayload request) {
         return syncRepository.push(user.userId(), request);
     }
 }

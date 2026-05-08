@@ -23,11 +23,14 @@ public class JwtService {
     }
 
     public String issueAccessToken(String userId) {
-        return issueToken(userId, Instant.now().plusSeconds(properties.auth().accessTokenMinutes() * 60));
+        return issueToken(
+                userId, Instant.now().plusSeconds(properties.auth().accessTokenMinutes() * 60));
     }
 
     public String issueRefreshToken(String userId) {
-        return issueToken(userId, Instant.now().plusSeconds(properties.auth().refreshTokenDays() * 24 * 60 * 60));
+        return issueToken(
+                userId,
+                Instant.now().plusSeconds(properties.auth().refreshTokenDays() * 24 * 60 * 60));
     }
 
     public Optional<String> parseUserId(String token) {
@@ -37,7 +40,8 @@ public class JwtService {
                 return Optional.empty();
             }
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
-            if (claims.getExpirationTime() == null || claims.getExpirationTime().before(new Date())) {
+            if (claims.getExpirationTime() == null
+                    || claims.getExpirationTime().before(new Date())) {
                 return Optional.empty();
             }
             return Optional.ofNullable(claims.getSubject());
@@ -48,11 +52,12 @@ public class JwtService {
 
     private String issueToken(String userId, Instant expiresAt) {
         try {
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .subject(userId)
-                    .expirationTime(Date.from(expiresAt))
-                    .issueTime(new Date())
-                    .build();
+            JWTClaimsSet claims =
+                    new JWTClaimsSet.Builder()
+                            .subject(userId)
+                            .expirationTime(Date.from(expiresAt))
+                            .issueTime(new Date())
+                            .build();
             SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
             jwt.sign(new MACSigner(secretBytes()));
             return jwt.serialize();

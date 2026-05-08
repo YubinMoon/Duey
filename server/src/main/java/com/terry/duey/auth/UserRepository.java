@@ -18,18 +18,23 @@ public class UserRepository {
         Optional<UserRecord> existing = findByGoogleSubject(googleUser.subject());
         if (existing.isPresent()) {
             UserRecord user = existing.get();
-            jdbcClient.sql("UPDATE users SET email = :email, name = :name, updated_at = :updatedAt WHERE id = :id")
+            jdbcClient
+                    .sql(
+                            "UPDATE users SET email = :email, name = :name, updated_at = :updatedAt WHERE id = :id")
                     .param("email", googleUser.email())
                     .param("name", googleUser.name())
                     .param("updatedAt", Instant.now().toString())
                     .param("id", user.id())
                     .update();
-            return new UserRecord(user.id(), user.googleSubject(), googleUser.email(), googleUser.name());
+            return new UserRecord(
+                    user.id(), user.googleSubject(), googleUser.email(), googleUser.name());
         }
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
-        jdbcClient.sql("""
+        jdbcClient
+                .sql(
+                        """
                         INSERT INTO users (id, google_subject, email, name, created_at, updated_at)
                         VALUES (:id, :googleSubject, :email, :name, :createdAt, :updatedAt)
                         """)
@@ -44,14 +49,17 @@ public class UserRepository {
     }
 
     private Optional<UserRecord> findByGoogleSubject(String googleSubject) {
-        return jdbcClient.sql("SELECT id, google_subject, email, name FROM users WHERE google_subject = :googleSubject")
+        return jdbcClient
+                .sql(
+                        "SELECT id, google_subject, email, name FROM users WHERE google_subject = :googleSubject")
                 .param("googleSubject", googleSubject)
-                .query((rs, rowNum) -> new UserRecord(
-                        rs.getString("id"),
-                        rs.getString("google_subject"),
-                        rs.getString("email"),
-                        rs.getString("name")
-                ))
+                .query(
+                        (rs, rowNum) ->
+                                new UserRecord(
+                                        rs.getString("id"),
+                                        rs.getString("google_subject"),
+                                        rs.getString("email"),
+                                        rs.getString("name")))
                 .optional();
     }
 }

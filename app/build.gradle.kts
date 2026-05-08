@@ -63,7 +63,8 @@ android {
             applicationIdSuffix = ".debug"
             resValue("string", "app_name", "Duey Debug")
             buildConfigField("String", "APP_ENV", quotedBuildConfig("debug"))
-            buildConfigField("String", "SERVER_BASE_URL", quotedBuildConfig((project.findProperty("SERVER_BASE_URL") as String?) ?: "http://10.0.2.2:8080"))
+            val serverBaseUrl = (project.findProperty("SERVER_BASE_URL") as String?) ?: "http://10.0.2.2:8080"
+            buildConfigField("String", "SERVER_BASE_URL", quotedBuildConfig(serverBaseUrl))
             buildConfigField("boolean", "IS_STAGE", "false")
             buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "false")
         }
@@ -74,10 +75,14 @@ android {
             matchingFallbacks += listOf("debug")
             resValue("string", "app_name", "Duey Stage")
             buildConfigField("String", "APP_ENV", quotedBuildConfig("stage"))
+            val stageServerBaseUrl =
+                (project.findProperty("STAGE_SERVER_BASE_URL") as String?)
+                    ?: (project.findProperty("SERVER_BASE_URL") as String?)
+                    ?: ""
             buildConfigField(
                 "String",
                 "SERVER_BASE_URL",
-                quotedBuildConfig((project.findProperty("STAGE_SERVER_BASE_URL") as String?) ?: (project.findProperty("SERVER_BASE_URL") as String?) ?: ""),
+                quotedBuildConfig(stageServerBaseUrl),
             )
             buildConfigField("boolean", "IS_STAGE", "true")
             buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
@@ -95,10 +100,14 @@ android {
             }
             resValue("string", "app_name", "Duey")
             buildConfigField("String", "APP_ENV", quotedBuildConfig("prod"))
+            val prodServerBaseUrl =
+                (project.findProperty("PROD_SERVER_BASE_URL") as String?)
+                    ?: (project.findProperty("SERVER_BASE_URL") as String?)
+                    ?: ""
             buildConfigField(
                 "String",
                 "SERVER_BASE_URL",
-                quotedBuildConfig((project.findProperty("PROD_SERVER_BASE_URL") as String?) ?: (project.findProperty("SERVER_BASE_URL") as String?) ?: ""),
+                quotedBuildConfig(prodServerBaseUrl),
             )
             buildConfigField("boolean", "IS_STAGE", "false")
             buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "false")
@@ -111,12 +120,12 @@ android {
             )
         }
     }
-    
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -142,17 +151,19 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation("com.google.android.gms:play-services-auth:21.4.0")
+    implementation("androidx.credentials:credentials:1.7.0-alpha02")
+    implementation("androidx.credentials:credentials-play-services-auth:1.7.0-alpha02")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("org.json:json:20240303")
-    
+
     testImplementation(libs.junit)
     testImplementation("org.json:json:20240303")
-    
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

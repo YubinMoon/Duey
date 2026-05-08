@@ -15,11 +15,9 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 @Import(ApiTestConfig.class)
 class EnvironmentConfigTest {
-    @Autowired
-    Environment environment;
+    @Autowired Environment environment;
 
-    @Autowired
-    DataSource dataSource;
+    @Autowired DataSource dataSource;
 
     @Test
     void testProfileUsesInMemorySqliteWithoutStageOrProdSecrets() throws Exception {
@@ -27,6 +25,7 @@ class EnvironmentConfigTest {
         try (Connection connection = dataSource.getConnection()) {
             assertThat(connection.getMetaData().getURL()).contains("mode=memory");
         }
-        assertThat(environment.getProperty("duey.auth.google-client-id")).isEqualTo("test-google-client");
+        assertThat(environment.getProperty("duey.auth.google-client-id"))
+                .isEqualTo("test-google-client");
     }
 }

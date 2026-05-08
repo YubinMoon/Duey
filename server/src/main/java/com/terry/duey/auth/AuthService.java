@@ -10,20 +10,27 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
-    public AuthService(GoogleTokenVerifier googleTokenVerifier, JwtService jwtService, UserRepository userRepository) {
+    public AuthService(
+            GoogleTokenVerifier googleTokenVerifier,
+            JwtService jwtService,
+            UserRepository userRepository) {
         this.googleTokenVerifier = googleTokenVerifier;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
     }
 
     public AuthController.AuthResponse loginWithGoogle(String idToken) {
-        GoogleUser googleUser = googleTokenVerifier.verify(idToken)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Google token"));
+        GoogleUser googleUser =
+                googleTokenVerifier
+                        .verify(idToken)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.UNAUTHORIZED, "Invalid Google token"));
         UserRecord user = userRepository.upsertGoogleUser(googleUser);
         return new AuthController.AuthResponse(
                 jwtService.issueAccessToken(user.id()),
                 jwtService.issueRefreshToken(user.id()),
-                new AuthController.UserResponse(user.id(), user.email(), user.name())
-        );
+                new AuthController.UserResponse(user.id(), user.email(), user.name()));
     }
 }

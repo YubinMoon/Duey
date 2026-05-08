@@ -49,12 +49,14 @@ data class RemoteRecurringTemplate(
 )
 
 class SyncApiClient {
-    fun bootstrap(accessToken: String): Result<SyncPayload> = runCatching {
+    fun bootstrap(accessToken: String?): Result<SyncPayload> = runCatching {
         val connection =
             (URL("${BuildConfig.SERVER_BASE_URL.trimEnd('/')}/api/sync/v1/bootstrap").openConnection() as HttpURLConnection)
                 .apply {
                     requestMethod = "GET"
-                    setRequestProperty("Authorization", "Bearer $accessToken")
+                    if (!accessToken.isNullOrBlank()) {
+                        setRequestProperty("Authorization", "Bearer $accessToken")
+                    }
                     connectTimeout = 10_000
                     readTimeout = 15_000
                 }

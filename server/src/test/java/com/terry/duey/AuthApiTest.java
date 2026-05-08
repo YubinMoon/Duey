@@ -20,11 +20,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 @Import(ApiTestConfig.class)
 class AuthApiTest {
-    @Autowired
-    MockMvc mockMvc;
+    @Autowired MockMvc mockMvc;
 
-    @Autowired
-    JdbcClient jdbcClient;
+    @Autowired JdbcClient jdbcClient;
 
     @BeforeEach
     void cleanDatabase() {
@@ -36,9 +34,10 @@ class AuthApiTest {
 
     @Test
     void googleAuth_acceptsValidToken() throws Exception {
-        mockMvc.perform(post("/api/auth/google")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"valid-google-token\"}"))
+        mockMvc.perform(
+                        post("/api/auth/google")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"idToken\":\"valid-google-token\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.refreshToken").isNotEmpty())
@@ -47,9 +46,10 @@ class AuthApiTest {
 
     @Test
     void googleAuth_rejectsInvalidToken() throws Exception {
-        mockMvc.perform(post("/api/auth/google")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"invalid\"}"))
+        mockMvc.perform(
+                        post("/api/auth/google")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"idToken\":\"invalid\"}"))
                 .andExpect(status().isUnauthorized());
     }
 }

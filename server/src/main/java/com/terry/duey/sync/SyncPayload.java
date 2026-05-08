@@ -5,8 +5,7 @@ import java.util.List;
 public record SyncPayload(
         List<CategoryPayload> categories,
         List<TodoPayload> todos,
-        List<RecurringTemplatePayload> recurringTemplates
-) {
+        List<RecurringTemplatePayload> recurringTemplates) {
     public SyncPayload {
         categories = categories == null ? List.of() : categories;
         todos = todos == null ? List.of() : todos;
@@ -19,9 +18,7 @@ public record SyncPayload(
             int sortOrder,
             String createdAt,
             String updatedAt,
-            String deletedAt
-    ) {
-    }
+            String deletedAt) {}
 
     public record TodoPayload(
             String id,
@@ -35,9 +32,7 @@ public record SyncPayload(
             String recurringOccurrenceDate,
             String createdAt,
             String updatedAt,
-            String deletedAt
-    ) {
-    }
+            String deletedAt) {}
 
     public record RecurringTemplatePayload(
             String id,
@@ -53,7 +48,5 @@ public record SyncPayload(
             String lastGeneratedUntil,
             String createdAt,
             String updatedAt,
-            String deletedAt
-    ) {
-    }
+            String deletedAt) {}
 }
