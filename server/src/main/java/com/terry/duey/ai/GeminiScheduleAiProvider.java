@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -14,7 +13,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
-@Profile("!debug")
 public class GeminiScheduleAiProvider implements ScheduleAiProvider {
     private final DueyProperties properties;
     private final JsonMapper jsonMapper;

@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 plugins {
     java
     checkstyle
@@ -57,26 +59,48 @@ tasks.register("lint") {
     dependsOn("compileJava", "checkstyleMain", "checkstyleTest")
 }
 
-tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunDebug") {
+fun BootRun.useDueyGradleEnvironment() {
+    listOf(
+        "ACCESS_TOKEN_MINUTES",
+        "AI_PROVIDER",
+        "DB_PASSWORD",
+        "DB_URL",
+        "DB_USERNAME",
+        "DEBUG_USER_ID",
+        "GEMINI_API_KEY",
+        "GEMINI_MODEL",
+        "GOOGLE_CLIENT_ID",
+        "JWT_SECRET",
+        "REFRESH_TOKEN_DAYS",
+        "SERVER_PORT",
+    ).forEach { name ->
+        providers.gradleProperty(name).orNull?.let { value -> environment(name, value) }
+    }
+}
+
+tasks.register<BootRun>("bootRunDebug") {
     group = "application"
     description = "Runs the server with the debug Spring profile."
     mainClass.set("com.terry.duey.DueyServerApplication")
     classpath = sourceSets["main"].runtimeClasspath
     systemProperty("spring.profiles.active", "debug")
+    useDueyGradleEnvironment()
 }
 
-tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunStage") {
+tasks.register<BootRun>("bootRunStage") {
     group = "application"
     description = "Runs the server with the stage Spring profile."
     mainClass.set("com.terry.duey.DueyServerApplication")
     classpath = sourceSets["main"].runtimeClasspath
     systemProperty("spring.profiles.active", "stage")
+    useDueyGradleEnvironment()
 }
 
-tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunProd") {
+tasks.register<BootRun>("bootRunProd") {
     group = "application"
     description = "Runs the server with the prod Spring profile."
     mainClass.set("com.terry.duey.DueyServerApplication")
     classpath = sourceSets["main"].runtimeClasspath
     systemProperty("spring.profiles.active", "prod")
+    useDueyGradleEnvironment()
 }

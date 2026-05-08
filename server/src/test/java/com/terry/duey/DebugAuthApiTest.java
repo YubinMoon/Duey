@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
         })
 @AutoConfigureMockMvc
 @ActiveProfiles("debug")
+@Import(ApiTestConfig.class)
 class DebugAuthApiTest {
     @Autowired MockMvc mockMvc;
 
@@ -41,6 +43,6 @@ class DebugAuthApiTest {
                                                 "audio".getBytes()))
                                 .param("mimeType", "audio/mp4"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Debug voice schedule"));
+                .andExpect(jsonPath("$.startDate").value("2026-05-05"));
     }
 }
