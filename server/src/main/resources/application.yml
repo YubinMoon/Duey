@@ -14,4 +14,4 @@ duey:
   ai:
     provider: ${AI_PROVIDER:gemini}
     gemini-api-key: ${GEMINI_API_KEY:}
-    gemini-model: ${GEMINI_MODEL:gemini-3.1-flash-lite-preview}
+    gemini-model: ${GEMINI_MODEL:gemini-3.1-flash-lite}

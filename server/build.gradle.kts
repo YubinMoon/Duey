@@ -32,6 +32,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("com.google.genai:google-genai:1.53.0")
     implementation("org.springframework.security:spring-security-oauth2-jose")
 
     runtimeOnly("org.xerial:sqlite-jdbc:3.50.3.0")
