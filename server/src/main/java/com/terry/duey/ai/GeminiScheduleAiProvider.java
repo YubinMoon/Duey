@@ -6,7 +6,6 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.Schema;
-import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.Type.Known;
 import com.terry.duey.config.DueyProperties;
 import java.time.LocalDate;
@@ -41,7 +40,6 @@ public class GeminiScheduleAiProvider implements ScheduleAiProvider {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Gemini API key is not configured");
         }
-
         GenerateContentResponse response;
         try (Client client = Client.builder().apiKey(properties.ai().geminiApiKey()).build()) {
             response = client.models.generateContent(properties.ai().geminiModel(),
@@ -53,8 +51,7 @@ public class GeminiScheduleAiProvider implements ScheduleAiProvider {
     }
 
     private Content geminiContent(byte[] audioBytes, String mimeType) {
-        return Content.fromParts(Part.fromText("첨부된 한국어 음성에서 일정을 추출하세요."),
-                Part.fromBytes(audioBytes, mimeType));
+        return Content.fromParts(Part.fromBytes(audioBytes, mimeType));
     }
 
     private GenerateContentConfig geminiConfig() {
@@ -66,9 +63,11 @@ public class GeminiScheduleAiProvider implements ScheduleAiProvider {
                 .propertyOrdering(
                         List.of("title", "description", "category", "start_date", "end_date"))
                 .build();
-        return GenerateContentConfig.builder().responseMimeType("application/json")
-                .candidateCount(1).responseSchema(schema)
-                .thinkingConfig(ThinkingConfig.builder().thinkingBudget(0)).build();
+        return GenerateContentConfig.builder()
+                .systemInstruction(
+                        Content.fromParts(Part.fromText("유저 입력을 기반으로 Todo 리스트 등록을 하십시오")))
+                .responseMimeType("application/json").candidateCount(1).responseSchema(schema)
+                .build();
     }
 
     private Schema stringSchema() {

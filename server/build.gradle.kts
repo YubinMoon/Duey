@@ -35,7 +35,13 @@ dependencies {
     implementation("com.google.genai:google-genai:1.53.0")
     implementation("org.springframework.security:spring-security-oauth2-jose")
 
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+
     runtimeOnly("org.xerial:sqlite-jdbc:3.50.3.0")
+
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
 
     testImplementation("org.springframework.boot:spring-boot-starter-jdbc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")
